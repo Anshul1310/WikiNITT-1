@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, HTMLMotionProps } from "framer-motion";
 
 const Dialog = ({
   open,
@@ -31,14 +31,14 @@ const Dialog = ({
 
 const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & {
+  HTMLMotionProps<"div"> & {
     onPointerDownOutside?: (e: any) => void;
     onEscapeKeyDown?: (e: any) => void;
   }
 >(
   (
     { className, children, onPointerDownOutside, onEscapeKeyDown, ...props },
-    ref
+    ref,
   ) => {
     return (
       <motion.div
@@ -46,17 +46,17 @@ const DialogContent = React.forwardRef<
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        ref={ref}
+        ref={ref as React.Ref<HTMLDivElement>}
         className={cn(
           "z-50 grid w-full max-w-lg gap-4 border bg-background/95 backdrop-blur-xl p-6 shadow-2xl duration-200 sm:rounded-xl border-white/10",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </motion.div>
     );
-  }
+  },
 );
 DialogContent.displayName = "DialogContent";
 
@@ -67,7 +67,7 @@ const DialogHeader = ({
   <div
     className={cn(
       "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
+      className,
     )}
     {...props}
   />
@@ -82,7 +82,7 @@ const DialogTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "text-xl font-semibold leading-none tracking-tight text-foreground",
-      className
+      className,
     )}
     {...props}
   />

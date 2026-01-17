@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CREATE_POST } from "@/queries/community";
 import { useRouter } from "next/navigation";
 import Editor from "@/components/Editor";
+import { useSession } from "next-auth/react";
+import { getGraphQLClient } from "@/lib/graphql";
 
 interface CreatePostFormProps {
   groupId: string;

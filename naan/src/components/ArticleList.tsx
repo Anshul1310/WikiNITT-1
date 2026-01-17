@@ -26,7 +26,7 @@ export default function ArticleList({ articles }: ArticleListProps) {
           >
             <div className="relative h-48 w-full overflow-hidden">
               <Image
-                src={article.thumbnail || "/images/placeholder.png"} 
+                src={article.thumbnail || "/images/placeholder.png"}
                 alt={article.title || "Article thumbnail"}
                 fill
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -66,7 +66,9 @@ export default function ArticleList({ articles }: ArticleListProps) {
                   </p>
                   <div className="flex space-x-1 text-sm text-gray-500">
                     <time dateTime={article.createdAt}>
-                      {new Date(article.createdAt).toLocaleDateString()}
+                      {new Date(
+                        article.createdAt as string,
+                      ).toLocaleDateString()}
                     </time>
                   </div>
                 </div>
