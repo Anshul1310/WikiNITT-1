@@ -1,0 +1,71 @@
+type User {
+  id: ID!
+  name: String!
+  username: String!
+  displayName: String!
+  email: String!
+  gender: String!
+  avatar: String!
+  phoneNumber: String!
+  setupComplete: Boolean!
+  isAdmin: Boolean!
+  isBanned: Boolean!
+  createdAt: String!
+}
+
+type PublicUser {
+  id: ID!
+  name: String!
+  username: String!
+  displayName: String!
+  gender: String!
+  avatar: String!
+  posts(limit: Int, offset: Int): [Post!]!
+  comments(limit: Int, offset: Int): [Comment!]!
+  groups: [Group!]!
+}
+
+input NewUser {
+  id: ID!
+  name: String!
+  email: String!
+  gender: String!
+  phoneNumber: String!
+  machineToken: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+input CompleteSetupInput {
+  username: String!
+  displayName: String!
+}
+
+extend type Query {
+  users: [User!]! @auth(requires: ADMIN)
+  checkUsername(username: String!): Boolean!
+  me: User! @auth(requires: USER)
+  user(username: String!): PublicUser!
+}
+
+extend type Mutation {
+  signIn(input: NewUser!): String! #give token
+  login(input: LoginInput!): String! #give token
+  completeSetup(input: CompleteSetupInput!): String! @auth(requires: USER)
+  # User Management
+  blockUser(id: ID!): Boolean! @auth(requires: ADMIN)
+  unblockUser(id: ID!): Boolean! @auth(requires: ADMIN)
+
+  updateUser(input: UpdateUserInput!): User! @auth(requires: USER)
+  uploadAvatar(file: Upload!): String! @auth(requires: USER)
+  uploadUserImage(file: Upload!): String! @auth(requires: USER)
+}
+
+input UpdateUserInput {
+  username: String
+  displayName: String
+  avatar: String
+}

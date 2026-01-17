@@ -1,0 +1,21 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+type Query {
+  ping: String!
+}
+
+type Mutation {
+  # Empty mutation type to be extended
+  _empty: String
+}
+
+scalar Upload
+
+directive @auth(requires: Role = USER) on OBJECT | FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  USER
+}

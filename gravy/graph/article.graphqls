@@ -1,0 +1,51 @@
+type Article {
+  id: ID!
+  title: String!
+  content: String!
+  slug: String!
+  category: String!
+  thumbnail: String!
+  featured: Boolean!
+  description: String!
+  author: PublicUser!
+  createdAt: String!
+  updatedAt: String!
+}
+
+input NewArticle {
+  title: String!
+  content: String!
+  category: String!
+  thumbnail: String!
+  featured: Boolean!
+}
+
+input UpdateArticle {
+  id: ID!
+  title: String
+  content: String
+  category: String
+  thumbnail: String
+  featured: Boolean
+}
+
+extend type Query {
+  articles(
+    category: String
+    limit: Int
+    offset: Int
+    featured: Boolean
+  ): [Article!]!
+  article(id: ID!): Article
+  articleBySlug(slug: String!): Article
+}
+
+extend type Mutation {
+  # Article Management
+  createArticle(input: NewArticle!): Article! @auth(requires: ADMIN)
+  updateArticle(input: UpdateArticle!): Article! @auth(requires: ADMIN)
+  deleteArticle(id: ID!): Boolean! @auth(requires: ADMIN)
+
+  # Upload
+  uploadImage(file: Upload!): String! @auth(requires: ADMIN)
+}

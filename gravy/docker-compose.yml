@@ -1,0 +1,33 @@
+services:
+  graphql-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: graphql-dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app
+
+  mongodb:
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.23.0
+    environment:
+      - MEILI_MASTER_KEY=blablablablablablablablablablablablabla
+      - MEILI_ENV=development
+    ports:
+      - 7700:7700
+    volumes:
+      - meili-data:/data
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  meili-data:

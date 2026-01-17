@@ -1,0 +1,51 @@
+type Discussion {
+  id: ID!
+  group: Group!
+  channels: [Channel!]!
+}
+
+type Channel {
+  id: ID!
+  name: String!
+  type: ChannelType!
+  discussion: Discussion!
+  messages(limit: Int, offset: Int): [Message!]!
+}
+
+enum ChannelType {
+  TEXT
+}
+
+type Message {
+  id: ID!
+  content: String!
+  sender: PublicUser!
+  channel: Channel!
+  createdAt: String!
+}
+
+input NewChannel {
+  discussionId: ID!
+  name: String!
+  type: ChannelType!
+}
+
+input NewMessage {
+  channelId: ID!
+  content: String!
+}
+
+extend type Query {
+  discussion(groupId: ID!): Discussion @auth(requires: USER) # Must be member
+  channel(id: ID!): Channel @auth(requires: USER)
+}
+
+extend type Mutation {
+  createChannel(input: NewChannel!): Channel! @auth(requires: USER) # Owner only
+  sendMessage(input: NewMessage!): Message! @auth(requires: USER)
+  deleteGroup(groupId: ID!): Boolean! @auth(requires: USER) # Owner only
+}
+
+extend type Subscription {
+  messageAdded(channelId: ID!): Message!
+}

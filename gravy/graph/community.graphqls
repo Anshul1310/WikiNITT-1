@@ -1,0 +1,87 @@
+type Group {
+  id: ID!
+  name: String!
+  description: String!
+  slug: String!
+  type: GroupType!
+  owner: PublicUser!
+  membersCount: Int!
+  isMember: Boolean! # Computed for current user
+  posts(limit: Int, offset: Int): [Post!]!
+  createdAt: String!
+}
+
+enum GroupType {
+  PUBLIC
+  PRIVATE
+}
+
+enum VoteType {
+  UP
+  DOWN
+  NONE
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: PublicUser!
+  group: Group!
+  commentsCount: Int!
+  upvotes: Int!
+  downvotes: Int!
+  userVote: VoteType!
+  comments(limit: Int, offset: Int): [Comment!]!
+  createdAt: String!
+}
+
+type Comment {
+  id: ID!
+  content: String!
+  author: PublicUser!
+  post: Post!
+  parentId: ID
+  replies(limit: Int, offset: Int): [Comment!]!
+  repliesCount: Int!
+  upvotes: Int!
+  downvotes: Int!
+  userVote: VoteType!
+  createdAt: String!
+}
+
+input NewGroup {
+  name: String!
+  description: String!
+  type: GroupType!
+}
+
+input NewPost {
+  groupId: ID!
+  title: String!
+  content: String!
+}
+
+input NewComment {
+  postId: ID!
+  parentId: ID # For nested replies
+  content: String!
+}
+
+extend type Query {
+  groups(limit: Int, offset: Int, ownerId: ID, type: GroupType): [Group!]!
+  group(slug: String!): Group
+  post(id: ID!): Post
+  comment(id: ID!): Comment
+  publicPosts(limit: Int, offset: Int): [Post!]!
+}
+
+extend type Mutation {
+  createGroup(input: NewGroup!): Group! @auth(requires: USER)
+  joinGroup(groupId: ID!): Boolean! @auth(requires: USER)
+  leaveGroup(groupId: ID!): Boolean! @auth(requires: USER)
+  createPost(input: NewPost!): Post! @auth(requires: USER)
+  createComment(input: NewComment!): Comment! @auth(requires: USER)
+  votePost(postId: ID!, type: VoteType!): Post! @auth(requires: USER)
+  voteComment(commentId: ID!, type: VoteType!): Comment! @auth(requires: USER)
+}

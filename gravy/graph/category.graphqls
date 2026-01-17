@@ -1,0 +1,16 @@
+type Category {
+  id: ID!
+  name: String!
+  slug: String!
+  createdAt: String!
+}
+
+extend type Query {
+  categories: [Category!]!
+}
+
+extend type Mutation {
+  # Category Management
+  createCategory(name: String!): Category! @auth(requires: ADMIN)
+  deleteCategory(id: ID!): Boolean! @auth(requires: ADMIN)
+}
