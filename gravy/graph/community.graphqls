@@ -38,6 +38,7 @@ type Post {
   downvotes: Int!
   userVote: VoteType!
   comments(limit: Int, offset: Int): [Comment!]!
+  isEdited: Boolean!
   createdAt: String!
 }
 
@@ -52,6 +53,7 @@ type Comment {
   upvotes: Int!
   downvotes: Int!
   userVote: VoteType!
+  isEdited: Boolean!
   createdAt: String!
 }
 
@@ -102,4 +104,10 @@ extend type Mutation {
   acceptJoinRequest(groupId: ID!, userId: ID!): Boolean! @auth(requires: USER)
   rejectJoinRequest(groupId: ID!, userId: ID!): Boolean! @auth(requires: USER)
   removeMember(groupId: ID!, userId: ID!): Boolean! @auth(requires: USER)
+  updatePost(postId: ID!, title: String, content: String): Post!
+    @auth(requires: USER)
+  deletePost(postId: ID!): Boolean! @auth(requires: USER)
+  updateComment(commentId: ID!, content: String!): Comment!
+    @auth(requires: USER)
+  deleteComment(commentId: ID!): Boolean! @auth(requires: USER)
 }

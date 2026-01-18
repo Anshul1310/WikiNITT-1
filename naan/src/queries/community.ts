@@ -61,6 +61,7 @@ export const GET_GROUP_BY_SLUG = gql(`
         upvotes
         downvotes
         userVote
+        isEdited
         author {
           id
           name
@@ -201,6 +202,7 @@ export const GET_POST = gql(`
       upvotes
       downvotes
       userVote
+      isEdited
       author {
         id
         name
@@ -220,6 +222,7 @@ export const GET_POST = gql(`
         downvotes
         userVote
         repliesCount
+        isEdited
         author {
           id
           name
@@ -269,6 +272,39 @@ export const VOTE_COMMENT = gql(`
   }
 `);
 
+export const UPDATE_POST = gql(`
+  mutation UpdatePost($postId: ID!, $title: String, $content: String) {
+    updatePost(postId: $postId, title: $title, content: $content) {
+      id
+      title
+      content
+      isEdited
+    }
+  }
+`);
+
+export const DELETE_POST = gql(`
+  mutation DeletePost($postId: ID!) {
+    deletePost(postId: $postId)
+  }
+`);
+
+export const UPDATE_COMMENT = gql(`
+  mutation UpdateComment($commentId: ID!, $content: String!) {
+    updateComment(commentId: $commentId, content: $content) {
+      id
+      content
+      isEdited
+    }
+  }
+`);
+
+export const DELETE_COMMENT = gql(`
+  mutation DeleteComment($commentId: ID!) {
+    deleteComment(commentId: $commentId)
+  }
+`);
+
 export const GET_COMMENTS = gql(`
   query GetComments($postId: ID!, $limit: Int!, $offset: Int!) {
     post(id: $postId) {
@@ -302,6 +338,7 @@ export const GET_REPLIES = gql(`
         downvotes
         userVote
         repliesCount
+        isEdited
         author {
           id
           name
@@ -324,6 +361,7 @@ export const GET_PUBLIC_POSTS = gql(`
       upvotes
       downvotes
       userVote
+      isEdited
       author {
         id
         name

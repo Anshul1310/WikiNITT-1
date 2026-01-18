@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,10 +20,18 @@ import {
   useMutation,
   useInfiniteQuery,
   useQueryClient,
+  useQuery,
 } from "@tanstack/react-query";
 import { getGraphQLClient } from "@/lib/graphql";
 import { useSession } from "next-auth/react";
-import { VOTE_COMMENT, CREATE_COMMENT, GET_REPLIES } from "@/queries/community";
+import {
+  VOTE_COMMENT,
+  CREATE_COMMENT,
+  GET_REPLIES,
+  UPDATE_COMMENT,
+  DELETE_COMMENT,
+} from "@/queries/community";
+import { GET_ME } from "@/queries/user";
 import { useRouter } from "next/navigation";
 import { VoteType } from "@/gql/graphql";
 import { request } from "graphql-request";
@@ -40,6 +50,7 @@ interface CommentData {
   downvotes: number;
   userVote: VoteType;
   repliesCount: number;
+  isEdited?: boolean;
   author: {
     id: string;
     name: string;
@@ -70,9 +81,6 @@ function ReplyLoader({
   const { data: session } = useSession();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const endpoint =
-    process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
-
   const {
     data,
     fetchNextPage,
@@ -83,7 +91,8 @@ function ReplyLoader({
   } = useInfiniteQuery({
     queryKey: ["replies", commentId],
     queryFn: async ({ pageParam = 0 }) => {
-      const result = await request<any>(endpoint, GET_REPLIES, {
+      const client = getGraphQLClient(session?.backendToken);
+      const result = await client.request(GET_REPLIES, {
         commentId,
         limit: REPLIES_PAGE_SIZE,
         offset: pageParam,
@@ -95,7 +104,7 @@ function ReplyLoader({
       if (lastPage.length < REPLIES_PAGE_SIZE) return undefined;
       return allPages.length * REPLIES_PAGE_SIZE;
     },
-    enabled: isExpanded,
+    enabled: isExpanded && !!session?.backendToken,
   });
 
   const allReplies = data?.pages.flatMap((page) => page) || [];
@@ -221,8 +230,56 @@ function CommentItem({
     onSuccess: () => {
       setReplyContent("");
       setIsReplying(false);
-
       queryClient.invalidateQueries({ queryKey: ["replies"] });
+      queryClient.invalidateQueries({ queryKey: ["post"] });
+      router.refresh();
+    },
+  });
+
+  // Edit/Delete state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Check if user can edit/delete
+  const { data: meData } = useQuery({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const client = getGraphQLClient(session?.backendToken);
+      return client.request(GET_ME);
+    },
+    enabled: !!session?.backendToken,
+  });
+
+  const isAuthor = session?.user?.id === comment.author.id;
+  const isAdmin = meData?.me?.isAdmin ?? false;
+  const canEditDelete = isAuthor || isAdmin;
+
+  const updateCommentMutation = useMutation({
+    mutationFn: async () => {
+      const client = getGraphQLClient(session?.backendToken);
+      return client.request(UPDATE_COMMENT, {
+        commentId: comment.id,
+        content: editContent,
+      });
+    },
+    onSuccess: () => {
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["replies"] });
+      queryClient.invalidateQueries({ queryKey: ["post"] });
+      router.refresh();
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async () => {
+      const client = getGraphQLClient(session?.backendToken);
+      return client.request(DELETE_COMMENT, { commentId: comment.id });
+    },
+    onSuccess: () => {
+      setIsDeleteModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["replies"] });
+      queryClient.invalidateQueries({ queryKey: ["post"] });
       router.refresh();
     },
   });
@@ -299,6 +356,7 @@ function CommentItem({
               addSuffix: true,
             })}
           </span>
+          {comment.isEdited && <span className="text-gray-400">(edited)</span>}
         </div>
 
         {}
@@ -355,6 +413,25 @@ function CommentItem({
               <span className="hidden sm:inline">Reply</span>
             </button>
           )}
+
+          {canEditDelete && (
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded transition-colors text-blue-600"
+                title="Edit comment"
+              >
+                <Edit className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="flex items-center gap-1 hover:bg-gray-100 px-2 py-1 rounded transition-colors text-red-600"
+                title="Delete comment"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
 
         {}
@@ -393,6 +470,63 @@ function CommentItem({
             depth={depth}
           />
         )}
+
+        {/* Edit Modal */}
+        {isEditing && (
+          <div className="mt-3" data-color-mode="light">
+            <Editor
+              value={editContent}
+              onChange={(val) => setEditContent(val)}
+              preview="edit"
+              height={120}
+            />
+            <div className="flex justify-end mt-2 gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => updateCommentMutation.mutate()}
+                disabled={
+                  updateCommentMutation.isPending || !editContent.trim()
+                }
+                className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {updateCommentMutation.isPending ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Delete Comment</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this comment? This action cannot
+                be undone.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteCommentMutation.mutate()}
+                  disabled={deleteCommentMutation.isPending}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+                >
+                  {deleteCommentMutation.isPending ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -404,6 +538,7 @@ export default function CommentSection({
 }: CommentSectionProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
 
   const comments = initialComments || [];
@@ -420,6 +555,7 @@ export default function CommentSection({
     },
     onSuccess: () => {
       setNewComment("");
+      queryClient.invalidateQueries({ queryKey: ["post"] });
       router.refresh();
     },
   });

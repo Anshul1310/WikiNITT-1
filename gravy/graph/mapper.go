@@ -96,6 +96,7 @@ func mapPostToModel(p *community.Post, author *users.PublicUser, group *communit
 		CommentsCount: int32(p.CommentsCount),
 		Upvotes:       int32(p.UpvotesCount),
 		Downvotes:     int32(p.DownvotesCount),
+		IsEdited:      p.IsEdited,
 		CreatedAt:     p.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 }
@@ -113,6 +114,7 @@ func mapCommentToModel(c *community.Comment, author *users.PublicUser, post *com
 		Upvotes:      int32(c.UpvotesCount),
 		Downvotes:    int32(c.DownvotesCount),
 		RepliesCount: int32(c.RepliesCount),
+		IsEdited:     c.IsEdited,
 		CreatedAt:    c.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 }

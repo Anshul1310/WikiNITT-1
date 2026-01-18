@@ -95,6 +95,7 @@ export const GET_ME = gql(`
       username
       displayName
       avatar
+      isAdmin
       groups {
         id
         name

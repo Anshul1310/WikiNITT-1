@@ -692,6 +692,166 @@ func (r *mutationResolver) RemoveMember(ctx context.Context, groupID string, use
 	return true, nil
 }
 
+// UpdatePost is the resolver for the updatePost field.
+func (r *mutationResolver) UpdatePost(ctx context.Context, postID string, title *string, content *string) (*model.Post, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, fmt.Errorf("not authenticated")
+	}
+
+	post, err := r.CommunityRepo.GetPost(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if user is author or admin
+	if post.AuthorID != user.ID && !user.IsAdmin {
+		return nil, fmt.Errorf("access denied: only author or admin can edit")
+	}
+
+	var sanitizedContent *string
+	if content != nil {
+		c := sanitization.SanitizeContent(*content)
+		sanitizedContent = &c
+	}
+
+	updatedPost, err := r.CommunityRepo.UpdatePost(ctx, postID, title, sanitizedContent)
+	if err != nil {
+		return nil, err
+	}
+
+	author, _ := r.UserRepo.GetByID(ctx, updatedPost.AuthorID)
+	authorPublic := &users.PublicUser{
+		ID:          author.ID,
+		Name:        author.Name,
+		Username:    author.Username,
+		DisplayName: author.DisplayName,
+		Gender:      author.Gender,
+		Avatar:      author.Avatar,
+	}
+
+	group, _ := r.CommunityRepo.GetGroupByID(ctx, updatedPost.GroupID)
+	groupOwner, _ := r.UserRepo.GetByID(ctx, group.OwnerID)
+	groupOwnerPublic := &users.PublicUser{
+		ID:          groupOwner.ID,
+		Name:        groupOwner.Name,
+		Username:    groupOwner.Username,
+		DisplayName: groupOwner.DisplayName,
+		Gender:      groupOwner.Gender,
+		Avatar:      groupOwner.Avatar,
+	}
+
+	return mapPostToModel(updatedPost, authorPublic, group, groupOwnerPublic), nil
+}
+
+// DeletePost is the resolver for the deletePost field.
+func (r *mutationResolver) DeletePost(ctx context.Context, postID string) (bool, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return false, fmt.Errorf("not authenticated")
+	}
+
+	post, err := r.CommunityRepo.GetPost(ctx, postID)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if user is author or admin
+	if post.AuthorID != user.ID && !user.IsAdmin {
+		return false, fmt.Errorf("access denied: only author or admin can delete")
+	}
+
+	err = r.CommunityRepo.DeletePost(ctx, postID)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UpdateComment is the resolver for the updateComment field.
+func (r *mutationResolver) UpdateComment(ctx context.Context, commentID string, content string) (*model.Comment, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, fmt.Errorf("not authenticated")
+	}
+
+	comment, err := r.CommunityRepo.GetComment(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if user is author or admin
+	if comment.AuthorID != user.ID && !user.IsAdmin {
+		return nil, fmt.Errorf("access denied: only author or admin can edit")
+	}
+
+	sanitizedContent := sanitization.SanitizeContent(content)
+	updatedComment, err := r.CommunityRepo.UpdateComment(ctx, commentID, sanitizedContent)
+	if err != nil {
+		return nil, err
+	}
+
+	author, _ := r.UserRepo.GetByID(ctx, updatedComment.AuthorID)
+	authorPublic := &users.PublicUser{
+		ID:          author.ID,
+		Name:        author.Name,
+		Username:    author.Username,
+		DisplayName: author.DisplayName,
+		Gender:      author.Gender,
+		Avatar:      author.Avatar,
+	}
+
+	post, _ := r.CommunityRepo.GetPost(ctx, updatedComment.PostID)
+	postAuthor, _ := r.UserRepo.GetByID(ctx, post.AuthorID)
+	postAuthorPublic := &users.PublicUser{
+		ID:          postAuthor.ID,
+		Name:        postAuthor.Name,
+		Username:    postAuthor.Username,
+		DisplayName: postAuthor.DisplayName,
+		Gender:      postAuthor.Gender,
+		Avatar:      postAuthor.Avatar,
+	}
+
+	group, _ := r.CommunityRepo.GetGroupByID(ctx, post.GroupID)
+	groupOwner, _ := r.UserRepo.GetByID(ctx, group.OwnerID)
+	groupOwnerPublic := &users.PublicUser{
+		ID:          groupOwner.ID,
+		Name:        groupOwner.Name,
+		Username:    groupOwner.Username,
+		DisplayName: groupOwner.DisplayName,
+		Gender:      groupOwner.Gender,
+		Avatar:      groupOwner.Avatar,
+	}
+
+	return mapCommentToModel(updatedComment, authorPublic, post, postAuthorPublic, group, groupOwnerPublic), nil
+}
+
+// DeleteComment is the resolver for the deleteComment field.
+func (r *mutationResolver) DeleteComment(ctx context.Context, commentID string) (bool, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return false, fmt.Errorf("not authenticated")
+	}
+
+	comment, err := r.CommunityRepo.GetComment(ctx, commentID)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if user is author or admin
+	if comment.AuthorID != user.ID && !user.IsAdmin {
+		return false, fmt.Errorf("access denied: only author or admin can delete")
+	}
+
+	err = r.CommunityRepo.DeleteComment(ctx, commentID)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // UserVote is the resolver for the userVote field.
 func (r *postResolver) UserVote(ctx context.Context, obj *model.Post) (model.VoteType, error) {
 	user := auth.ForContext(ctx)

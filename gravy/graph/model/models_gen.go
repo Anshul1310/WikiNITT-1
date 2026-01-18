@@ -53,6 +53,7 @@ type Comment struct {
 	Upvotes      int32       `json:"upvotes"`
 	Downvotes    int32       `json:"downvotes"`
 	UserVote     VoteType    `json:"userVote"`
+	IsEdited     bool        `json:"isEdited"`
 	CreatedAt    string      `json:"createdAt"`
 }
 
@@ -162,6 +163,7 @@ type Post struct {
 	Downvotes     int32       `json:"downvotes"`
 	UserVote      VoteType    `json:"userVote"`
 	Comments      []*Comment  `json:"comments"`
+	IsEdited      bool        `json:"isEdited"`
 	CreatedAt     string      `json:"createdAt"`
 }
 

@@ -42,6 +42,7 @@ type Post struct {
 	UpvotesCount   int       `bson:"upvotesCount"`
 	DownvotesCount int       `bson:"downvotesCount"`
 	Indexed        bool      `bson:"indexed"`
+	IsEdited       bool      `bson:"isEdited"`
 	CreatedAt      time.Time `bson:"createdAt"`
 }
 
@@ -55,6 +56,7 @@ type Comment struct {
 	DownvotesCount int       `bson:"downvotesCount"`
 	RepliesCount   int       `bson:"repliesCount"`
 	Indexed        bool      `bson:"indexed"`
+	IsEdited       bool      `bson:"isEdited"`
 	CreatedAt      time.Time `bson:"createdAt"`
 }
 

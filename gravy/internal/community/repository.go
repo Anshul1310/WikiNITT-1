@@ -34,12 +34,16 @@ type Repository interface {
 	ListPosts(ctx context.Context, groupID string, limit, offset int) ([]*Post, error)
 	ListPublicPosts(ctx context.Context, limit, offset int) ([]*Post, error)
 	ListPostsByAuthor(ctx context.Context, authorID string, limit, offset int) ([]*Post, error)
+	UpdatePost(ctx context.Context, postID string, title *string, content *string) (*Post, error)
+	DeletePost(ctx context.Context, postID string) error
 
 	CreateComment(ctx context.Context, comment *Comment) error
 	GetComment(ctx context.Context, id string) (*Comment, error)
 	ListComments(ctx context.Context, postID string, parentID *string, limit, offset int) ([]*Comment, error)
 	ListReplies(ctx context.Context, parentID string, limit, offset int) ([]*Comment, error)
 	ListCommentsByAuthor(ctx context.Context, authorID string, limit, offset int) ([]*Comment, error)
+	UpdateComment(ctx context.Context, commentID string, content string) (*Comment, error)
+	DeleteComment(ctx context.Context, commentID string) error
 
 	VotePost(ctx context.Context, userID, postID string, voteType string) error
 	GetUserVote(ctx context.Context, userID, postID string) (string, error)
@@ -1240,4 +1244,156 @@ func generateRandomString(n int) string {
 		return ""
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func (r *repository) UpdatePost(ctx context.Context, postID string, title *string, content *string) (*Post, error) {
+	oid, err := bson.ObjectIDFromHex(postID)
+	if err != nil {
+		return nil, err
+	}
+
+	update := bson.M{"isEdited": true}
+	if title != nil {
+		update["title"] = *title
+	}
+	if content != nil {
+		update["content"] = *content
+	}
+
+	_, err = r.db.Collection("posts").UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": update})
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := r.GetPost(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	group, err := r.GetGroupByID(ctx, post.GroupID)
+	if err == nil {
+		doc := map[string]interface{}{
+			"id":         post.ID,
+			"type":       "post",
+			"group_id":   post.GroupID,
+			"group_type": string(group.Type),
+			"title":      post.Title,
+			"content":    post.Content,
+			"authorId":   post.AuthorID,
+			"createdAt":  post.CreatedAt.Unix(),
+		}
+		_ = r.searchClient.IndexPost(ctx, doc)
+	}
+
+	return post, nil
+}
+
+func (r *repository) DeletePost(ctx context.Context, postID string) error {
+	oid, err := bson.ObjectIDFromHex(postID)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("comments").DeleteMany(ctx, bson.M{"postId": postID})
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("votes").DeleteMany(ctx, bson.M{"postId": postID})
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("comment_votes").DeleteMany(ctx, bson.M{"postId": postID})
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("posts").DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return err
+	}
+
+	_ = r.searchClient.DeletePost(ctx, postID)
+
+	return nil
+}
+
+func (r *repository) UpdateComment(ctx context.Context, commentID string, content string) (*Comment, error) {
+	oid, err := bson.ObjectIDFromHex(commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	update := bson.M{
+		"content":  content,
+		"isEdited": true,
+	}
+
+	_, err = r.db.Collection("comments").UpdateOne(ctx, bson.M{"_id": oid}, bson.M{"$set": update})
+	if err != nil {
+		return nil, err
+	}
+
+	comment, err := r.GetComment(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	post, err := r.GetPost(ctx, comment.PostID)
+	if err == nil {
+		group, err := r.GetGroupByID(ctx, post.GroupID)
+		if err == nil {
+			doc := map[string]interface{}{
+				"id":         comment.ID,
+				"type":       "comment",
+				"group_id":   post.GroupID,
+				"group_type": string(group.Type),
+				"content":    comment.Content,
+				"authorId":   comment.AuthorID,
+				"postId":     comment.PostID,
+				"parentId":   comment.ParentID,
+				"createdAt":  comment.CreatedAt.Unix(),
+			}
+			_ = r.searchClient.IndexComment(ctx, doc)
+		}
+	}
+
+	return comment, nil
+}
+
+func (r *repository) DeleteComment(ctx context.Context, commentID string) error {
+	comment, err := r.GetComment(ctx, commentID)
+	if err != nil {
+		return err
+	}
+
+	oid, err := bson.ObjectIDFromHex(commentID)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("comments").DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Collection("comment_votes").DeleteMany(ctx, bson.M{"commentId": commentID})
+	if err != nil {
+		return err
+	}
+
+	postOid, _ := bson.ObjectIDFromHex(comment.PostID)
+	_, _ = r.db.Collection("posts").UpdateOne(ctx, bson.M{"_id": postOid}, bson.M{"$inc": bson.M{"commentsCount": -1}})
+
+	if comment.ParentID != nil {
+		parentOid, err := bson.ObjectIDFromHex(*comment.ParentID)
+		if err == nil {
+			_, _ = r.db.Collection("comments").UpdateOne(ctx, bson.M{"_id": parentOid}, bson.M{"$inc": bson.M{"repliesCount": -1}})
+		}
+	}
+
+	_ = r.searchClient.DeleteComment(ctx, commentID)
+
+	return nil
 }
