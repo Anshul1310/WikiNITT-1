@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { request } from "graphql-request";
-import { GET_GROUPS } from "@/queries/community";
-import { GET_ME } from "@/queries/user";
+import { GET_GROUPS, GET_MY_GROUPS } from "@/queries/community";
 import { Query, GroupType } from "@/gql/graphql";
 import { useSession } from "next-auth/react";
 import { getGraphQLClient } from "@/lib/graphql";
@@ -19,20 +17,19 @@ export default function CommunitySidebar() {
       const data = await client.request<Query>(GET_GROUPS, {
         limit: 5,
         offset: 0,
-        type: GroupType.Public,
       });
-      return data.groups;
+      return data?.publicGroups || [];
     },
     enabled: !!session?.backendToken,
   });
 
   const { data: myGroups, isLoading: isLoadingMyGroups } = useQuery({
-    queryKey: ["myGroups", session?.backendToken],
+    queryKey: ["myCommunities", session?.backendToken],
     queryFn: async () => {
       if (!session?.backendToken) return [];
       const client = getGraphQLClient(session.backendToken);
-      const data = await client.request<Query>(GET_ME);
-      return data.me.groups;
+      const data = await client.request<Query>(GET_MY_GROUPS);
+      return data?.myGroups || [];
     },
     enabled: !!session?.backendToken,
   });

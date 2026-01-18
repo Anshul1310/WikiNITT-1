@@ -76,8 +76,9 @@ input NewComment {
 }
 
 extend type Query {
-  groups(limit: Int, offset: Int, ownerId: ID, type: GroupType): [Group!]!
-    @auth(requires: USER)
+  publicGroups(limit: Int, offset: Int): [Group!]! @auth(requires: USER) # public groups
+  myGroups: [Group!]! @auth(requires: USER) # groups in which i am present
+  userGroups(username: String!): [Group!]! @auth(requires: USER) # public groups in which user is present
   group(slug: String!): Group @auth(requires: USER)
   groupByInviteToken(token: String!): Group
   post(id: ID!): Post @auth(requires: USER)

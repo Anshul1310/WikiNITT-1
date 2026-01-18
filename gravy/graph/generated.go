@@ -48,7 +48,6 @@ type ResolverRoot interface {
 	PublicUser() PublicUserResolver
 	Query() QueryResolver
 	Subscription() SubscriptionResolver
-	User() UserResolver
 }
 
 type DirectiveRoot struct {
@@ -190,7 +189,6 @@ type ComplexityRoot struct {
 		Comments    func(childComplexity int, limit *int32, offset *int32) int
 		DisplayName func(childComplexity int) int
 		Gender      func(childComplexity int) int
-		Groups      func(childComplexity int) int
 		ID          func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Posts       func(childComplexity int, limit *int32, offset *int32) int
@@ -208,15 +206,17 @@ type ComplexityRoot struct {
 		Discussion         func(childComplexity int, groupID string) int
 		Group              func(childComplexity int, slug string) int
 		GroupByInviteToken func(childComplexity int, token string) int
-		Groups             func(childComplexity int, limit *int32, offset *int32, ownerID *string, typeArg *model.GroupType) int
 		Me                 func(childComplexity int) int
+		MyGroups           func(childComplexity int) int
 		Ping               func(childComplexity int) int
 		Post               func(childComplexity int, id string) int
+		PublicGroups       func(childComplexity int, limit *int32, offset *int32) int
 		PublicPosts        func(childComplexity int, limit *int32, offset *int32) int
 		SearchArticles     func(childComplexity int, query string, limit *int32, offset *int32) int
 		SearchCommunity    func(childComplexity int, query string, limit *int32, offset *int32) int
 		SearchPosts        func(childComplexity int, query string, limit *int32, offset *int32) int
 		User               func(childComplexity int, username string) int
+		UserGroups         func(childComplexity int, username string) int
 		Users              func(childComplexity int) int
 	}
 
@@ -230,7 +230,6 @@ type ComplexityRoot struct {
 		DisplayName   func(childComplexity int) int
 		Email         func(childComplexity int) int
 		Gender        func(childComplexity int) int
-		Groups        func(childComplexity int) int
 		ID            func(childComplexity int) int
 		IsAdmin       func(childComplexity int) int
 		IsBanned      func(childComplexity int) int
@@ -305,7 +304,6 @@ type PostResolver interface {
 type PublicUserResolver interface {
 	Posts(ctx context.Context, obj *model.PublicUser, limit *int32, offset *int32) ([]*model.Post, error)
 	Comments(ctx context.Context, obj *model.PublicUser, limit *int32, offset *int32) ([]*model.Comment, error)
-	Groups(ctx context.Context, obj *model.PublicUser) ([]*model.Group, error)
 }
 type QueryResolver interface {
 	Ping(ctx context.Context) (string, error)
@@ -313,7 +311,9 @@ type QueryResolver interface {
 	Article(ctx context.Context, id string) (*model.Article, error)
 	ArticleBySlug(ctx context.Context, slug string) (*model.Article, error)
 	Categories(ctx context.Context) ([]*model.Category, error)
-	Groups(ctx context.Context, limit *int32, offset *int32, ownerID *string, typeArg *model.GroupType) ([]*model.Group, error)
+	PublicGroups(ctx context.Context, limit *int32, offset *int32) ([]*model.Group, error)
+	MyGroups(ctx context.Context) ([]*model.Group, error)
+	UserGroups(ctx context.Context, username string) ([]*model.Group, error)
 	Group(ctx context.Context, slug string) (*model.Group, error)
 	GroupByInviteToken(ctx context.Context, token string) (*model.Group, error)
 	Post(ctx context.Context, id string) (*model.Post, error)
@@ -331,9 +331,6 @@ type QueryResolver interface {
 }
 type SubscriptionResolver interface {
 	MessageAdded(ctx context.Context, channelID string) (<-chan *model.Message, error)
-}
-type UserResolver interface {
-	Groups(ctx context.Context, obj *model.User) ([]*model.Group, error)
 }
 
 type executableSchema struct {
@@ -1195,12 +1192,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PublicUser.Gender(childComplexity), true
-	case "PublicUser.groups":
-		if e.complexity.PublicUser.Groups == nil {
-			break
-		}
-
-		return e.complexity.PublicUser.Groups(childComplexity), true
 	case "PublicUser.id":
 		if e.complexity.PublicUser.ID == nil {
 			break
@@ -1336,23 +1327,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.GroupByInviteToken(childComplexity, args["token"].(string)), true
-	case "Query.groups":
-		if e.complexity.Query.Groups == nil {
-			break
-		}
-
-		args, err := ec.field_Query_groups_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Groups(childComplexity, args["limit"].(*int32), args["offset"].(*int32), args["ownerId"].(*string), args["type"].(*model.GroupType)), true
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
 			break
 		}
 
 		return e.complexity.Query.Me(childComplexity), true
+	case "Query.myGroups":
+		if e.complexity.Query.MyGroups == nil {
+			break
+		}
+
+		return e.complexity.Query.MyGroups(childComplexity), true
 	case "Query.ping":
 		if e.complexity.Query.Ping == nil {
 			break
@@ -1370,6 +1356,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Post(childComplexity, args["id"].(string)), true
+	case "Query.publicGroups":
+		if e.complexity.Query.PublicGroups == nil {
+			break
+		}
+
+		args, err := ec.field_Query_publicGroups_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PublicGroups(childComplexity, args["limit"].(*int32), args["offset"].(*int32)), true
 	case "Query.publicPosts":
 		if e.complexity.Query.PublicPosts == nil {
 			break
@@ -1425,6 +1422,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.User(childComplexity, args["username"].(string)), true
+	case "Query.userGroups":
+		if e.complexity.Query.UserGroups == nil {
+			break
+		}
+
+		args, err := ec.field_Query_userGroups_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.UserGroups(childComplexity, args["username"].(string)), true
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
 			break
@@ -1474,12 +1482,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.Gender(childComplexity), true
-	case "User.groups":
-		if e.complexity.User.Groups == nil {
-			break
-		}
-
-		return e.complexity.User.Groups(childComplexity), true
 	case "User.id":
 		if e.complexity.User.ID == nil {
 			break
@@ -2347,7 +2349,18 @@ func (ec *executionContext) field_Query_group_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_groups_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_publicGroups_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint32)
@@ -2360,27 +2373,6 @@ func (ec *executionContext) field_Query_groups_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["offset"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "ownerId", ec.unmarshalOID2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["ownerId"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "type", ec.unmarshalOGroupType2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupType)
-	if err != nil {
-		return nil, err
-	}
-	args["type"] = arg3
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -2460,6 +2452,17 @@ func (ec *executionContext) field_Query_searchPosts_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["offset"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_userGroups_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "username", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["username"] = arg0
 	return args, nil
 }
 
@@ -2809,8 +2812,6 @@ func (ec *executionContext) fieldContext_Article_author(_ context.Context, field
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -3267,8 +3268,6 @@ func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -3946,8 +3945,6 @@ func (ec *executionContext) fieldContext_Group_owner(_ context.Context, field gr
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -4214,8 +4211,6 @@ func (ec *executionContext) fieldContext_Group_joinRequests(_ context.Context, f
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -4281,8 +4276,6 @@ func (ec *executionContext) fieldContext_Group_members(_ context.Context, field 
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -4417,8 +4410,6 @@ func (ec *executionContext) fieldContext_Message_sender(_ context.Context, field
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -6687,8 +6678,6 @@ func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context
 				return ec.fieldContext_User_isBanned(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "groups":
-				return ec.fieldContext_User_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -6952,8 +6941,6 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -7571,67 +7558,6 @@ func (ec *executionContext) fieldContext_PublicUser_comments(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _PublicUser_groups(ctx context.Context, field graphql.CollectedField, obj *model.PublicUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_PublicUser_groups,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.PublicUser().Groups(ctx, obj)
-		},
-		nil,
-		ec.marshalNGroup2ᚕᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_PublicUser_groups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PublicUser",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Group_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Group_name(ctx, field)
-			case "description":
-				return ec.fieldContext_Group_description(ctx, field)
-			case "icon":
-				return ec.fieldContext_Group_icon(ctx, field)
-			case "slug":
-				return ec.fieldContext_Group_slug(ctx, field)
-			case "type":
-				return ec.fieldContext_Group_type(ctx, field)
-			case "owner":
-				return ec.fieldContext_Group_owner(ctx, field)
-			case "membersCount":
-				return ec.fieldContext_Group_membersCount(ctx, field)
-			case "isMember":
-				return ec.fieldContext_Group_isMember(ctx, field)
-			case "posts":
-				return ec.fieldContext_Group_posts(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Group_createdAt(ctx, field)
-			case "inviteToken":
-				return ec.fieldContext_Group_inviteToken(ctx, field)
-			case "joinRequests":
-				return ec.fieldContext_Group_joinRequests(ctx, field)
-			case "members":
-				return ec.fieldContext_Group_members(ctx, field)
-			case "hasPendingRequest":
-				return ec.fieldContext_Group_hasPendingRequest(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_ping(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7895,15 +7821,15 @@ func (ec *executionContext) fieldContext_Query_categories(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_groups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_publicGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Query_groups,
+		ec.fieldContext_Query_publicGroups,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Groups(ctx, fc.Args["limit"].(*int32), fc.Args["offset"].(*int32), fc.Args["ownerId"].(*string), fc.Args["type"].(*model.GroupType))
+			return ec.resolvers.Query().PublicGroups(ctx, fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -7930,7 +7856,7 @@ func (ec *executionContext) _Query_groups(ctx context.Context, field graphql.Col
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_groups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_publicGroups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -7979,7 +7905,177 @@ func (ec *executionContext) fieldContext_Query_groups(ctx context.Context, field
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_groups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_publicGroups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_myGroups,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().MyGroups(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				requires, err := ec.unmarshalORole2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐRole(ctx, "USER")
+				if err != nil {
+					var zeroVal []*model.Group
+					return zeroVal, err
+				}
+				if ec.directives.Auth == nil {
+					var zeroVal []*model.Group
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.directives.Auth(ctx, nil, directive0, requires)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNGroup2ᚕᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_myGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Group_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Group_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Group_description(ctx, field)
+			case "icon":
+				return ec.fieldContext_Group_icon(ctx, field)
+			case "slug":
+				return ec.fieldContext_Group_slug(ctx, field)
+			case "type":
+				return ec.fieldContext_Group_type(ctx, field)
+			case "owner":
+				return ec.fieldContext_Group_owner(ctx, field)
+			case "membersCount":
+				return ec.fieldContext_Group_membersCount(ctx, field)
+			case "isMember":
+				return ec.fieldContext_Group_isMember(ctx, field)
+			case "posts":
+				return ec.fieldContext_Group_posts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Group_createdAt(ctx, field)
+			case "inviteToken":
+				return ec.fieldContext_Group_inviteToken(ctx, field)
+			case "joinRequests":
+				return ec.fieldContext_Group_joinRequests(ctx, field)
+			case "members":
+				return ec.fieldContext_Group_members(ctx, field)
+			case "hasPendingRequest":
+				return ec.fieldContext_Group_hasPendingRequest(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_userGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_userGroups,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().UserGroups(ctx, fc.Args["username"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				requires, err := ec.unmarshalORole2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐRole(ctx, "USER")
+				if err != nil {
+					var zeroVal []*model.Group
+					return zeroVal, err
+				}
+				if ec.directives.Auth == nil {
+					var zeroVal []*model.Group
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.directives.Auth(ctx, nil, directive0, requires)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNGroup2ᚕᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_userGroups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Group_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Group_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Group_description(ctx, field)
+			case "icon":
+				return ec.fieldContext_Group_icon(ctx, field)
+			case "slug":
+				return ec.fieldContext_Group_slug(ctx, field)
+			case "type":
+				return ec.fieldContext_Group_type(ctx, field)
+			case "owner":
+				return ec.fieldContext_Group_owner(ctx, field)
+			case "membersCount":
+				return ec.fieldContext_Group_membersCount(ctx, field)
+			case "isMember":
+				return ec.fieldContext_Group_isMember(ctx, field)
+			case "posts":
+				return ec.fieldContext_Group_posts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Group_createdAt(ctx, field)
+			case "inviteToken":
+				return ec.fieldContext_Group_inviteToken(ctx, field)
+			case "joinRequests":
+				return ec.fieldContext_Group_joinRequests(ctx, field)
+			case "members":
+				return ec.fieldContext_Group_members(ctx, field)
+			case "hasPendingRequest":
+				return ec.fieldContext_Group_hasPendingRequest(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_userGroups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8782,8 +8878,6 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_isBanned(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "groups":
-				return ec.fieldContext_User_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -8898,8 +8992,6 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_User_isBanned(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "groups":
-				return ec.fieldContext_User_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -8948,8 +9040,6 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_PublicUser_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_PublicUser_comments(ctx, field)
-			case "groups":
-				return ec.fieldContext_PublicUser_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PublicUser", field.Name)
 		},
@@ -9472,67 +9562,6 @@ func (ec *executionContext) fieldContext_User_createdAt(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_groups(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_User_groups,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.User().Groups(ctx, obj)
-		},
-		nil,
-		ec.marshalNGroup2ᚕᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_User_groups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Group_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Group_name(ctx, field)
-			case "description":
-				return ec.fieldContext_Group_description(ctx, field)
-			case "icon":
-				return ec.fieldContext_Group_icon(ctx, field)
-			case "slug":
-				return ec.fieldContext_Group_slug(ctx, field)
-			case "type":
-				return ec.fieldContext_Group_type(ctx, field)
-			case "owner":
-				return ec.fieldContext_Group_owner(ctx, field)
-			case "membersCount":
-				return ec.fieldContext_Group_membersCount(ctx, field)
-			case "isMember":
-				return ec.fieldContext_Group_isMember(ctx, field)
-			case "posts":
-				return ec.fieldContext_Group_posts(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Group_createdAt(ctx, field)
-			case "inviteToken":
-				return ec.fieldContext_Group_inviteToken(ctx, field)
-			case "joinRequests":
-				return ec.fieldContext_Group_joinRequests(ctx, field)
-			case "members":
-				return ec.fieldContext_Group_members(ctx, field)
-			case "hasPendingRequest":
-				return ec.fieldContext_Group_hasPendingRequest(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
 		},
 	}
 	return fc, nil
@@ -12873,42 +12902,6 @@ func (ec *executionContext) _PublicUser(ctx context.Context, sel ast.SelectionSe
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "groups":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PublicUser_groups(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13055,7 +13048,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "groups":
+		case "publicGroups":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -13064,7 +13057,51 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_groups(ctx, field)
+				res = ec._Query_publicGroups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myGroups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "userGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_userGroups(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -13432,99 +13469,63 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._User_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "name":
 			out.Values[i] = ec._User_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "username":
 			out.Values[i] = ec._User_username(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "email":
 			out.Values[i] = ec._User_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "gender":
 			out.Values[i] = ec._User_gender(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "avatar":
 			out.Values[i] = ec._User_avatar(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "phoneNumber":
 			out.Values[i] = ec._User_phoneNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "setupComplete":
 			out.Values[i] = ec._User_setupComplete(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "isAdmin":
 			out.Values[i] = ec._User_isAdmin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "isBanned":
 			out.Values[i] = ec._User_isBanned(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "createdAt":
 			out.Values[i] = ec._User_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
-		case "groups":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_groups(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14906,22 +14907,6 @@ func (ec *executionContext) marshalOGroup2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwi
 		return graphql.Null
 	}
 	return ec._Group(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOGroupType2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupType(ctx context.Context, v any) (*model.GroupType, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(model.GroupType)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOGroupType2ᚖgithubᚗcomᚋpranavaᚑmohanᚋwikinittᚋgravyᚋgraphᚋmodelᚐGroupType(ctx context.Context, sel ast.SelectionSet, v *model.GroupType) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {

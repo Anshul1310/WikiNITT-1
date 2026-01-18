@@ -75,15 +75,12 @@ export const GET_USER_COMMENTS = gql(`
 
 export const GET_USER_GROUPS = gql(`
   query GetUserGroups($username: String!) {
-    user(username: $username) {
-      id
-      groups {
+    userGroups(username: $username) {
         id
         name
         slug
         description
         membersCount
-      }
     }
   }
 `);
@@ -96,13 +93,6 @@ export const GET_ME = gql(`
       displayName
       avatar
       isAdmin
-      groups {
-        id
-        name
-        slug
-        membersCount
-        icon
-      }
     }
   }
 `);

@@ -978,8 +978,8 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int
 	return modelComments, nil
 }
 
-// Groups is the resolver for the groups field.
-func (r *queryResolver) Groups(ctx context.Context, limit *int32, offset *int32, ownerID *string, typeArg *model.GroupType) ([]*model.Group, error) {
+// PublicGroups is the resolver for the publicGroups field.
+func (r *queryResolver) PublicGroups(ctx context.Context, limit *int32, offset *int32) ([]*model.Group, error) {
 	l := 10
 	o := 0
 	if limit != nil {
@@ -990,13 +990,7 @@ func (r *queryResolver) Groups(ctx context.Context, limit *int32, offset *int32,
 	}
 
 	filter := community.GroupFilter{}
-	if ownerID != nil {
-		filter.OwnerID = ownerID
-	}
-	if typeArg != nil {
-		t := community.GroupType(*typeArg)
-		filter.Type = &t
-	}
+	*filter.Type = community.GroupTypePublic
 
 	groups, err := r.CommunityRepo.ListGroups(ctx, filter, l, o)
 	if err != nil {
@@ -1005,16 +999,55 @@ func (r *queryResolver) Groups(ctx context.Context, limit *int32, offset *int32,
 
 	var modelGroups []*model.Group
 	for _, g := range groups {
-		owner, _ := r.UserRepo.GetByID(ctx, g.OwnerID)
-		ownerPublic := &users.PublicUser{
-			ID:          owner.ID,
-			Name:        owner.Name,
-			Username:    owner.Username,
-			DisplayName: owner.DisplayName,
-			Gender:      owner.Gender,
-			Avatar:      owner.Avatar,
+		owner, err := r.UserRepo.GetByID(ctx, g.OwnerID)
+		if err != nil || owner == nil {
+			continue
 		}
+
+		ownerPublic := mapUserToPublic(owner)
 		modelGroups = append(modelGroups, mapGroupToModel(g, ownerPublic))
+	}
+	return modelGroups, nil
+}
+
+// MyGroups is the resolver for the myGroups field.
+func (r *queryResolver) MyGroups(ctx context.Context) ([]*model.Group, error) {
+	user := auth.ForContext(ctx)
+	if user == nil {
+		return nil, fmt.Errorf("not authenticated")
+	}
+
+	groups, err := r.CommunityRepo.ListGroupsByMember(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	var modelGroups []*model.Group
+	for _, g := range groups {
+		owner, _ := r.UserRepo.GetByID(ctx, g.OwnerID)
+		modelGroups = append(modelGroups, mapGroupToModel(g, mapUserToPublic(owner)))
+	}
+	return modelGroups, nil
+}
+
+// UserGroups is the resolver for the userGroups field.
+func (r *queryResolver) UserGroups(ctx context.Context, username string) ([]*model.Group, error) {
+	if auth.ForContext(ctx) == nil {
+		return nil, fmt.Errorf("not authenticated")
+	}
+
+	user, err := r.UserRepo.GetByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	groups, err := r.CommunityRepo.ListPublicGroupsByMember(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	var modelGroups []*model.Group
+	for _, g := range groups {
+		owner, _ := r.UserRepo.GetByID(ctx, g.OwnerID)
+		modelGroups = append(modelGroups, mapGroupToModel(g, mapUserToPublic(owner)))
 	}
 	return modelGroups, nil
 }

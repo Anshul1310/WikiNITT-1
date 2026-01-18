@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { request } from "graphql-request";
-import { GET_GROUPS } from "@/queries/community";
+import { GET_GROUPS, GET_MY_GROUPS } from "@/queries/community";
 import { Query } from "@/gql/graphql";
 import { useSession } from "next-auth/react";
 import { getGraphQLClient } from "@/lib/graphql";
@@ -19,7 +19,7 @@ export default function MobileCommunityList() {
         limit: 10,
         offset: 0,
       });
-      return data.groups.filter((g) => g.type === "PUBLIC");
+      return data?.publicGroups || [];
     },
     enabled: !!session?.backendToken,
   });
@@ -29,12 +29,11 @@ export default function MobileCommunityList() {
     queryFn: async () => {
       if (!session?.backendToken) return [];
       const client = getGraphQLClient(session.backendToken);
-      const data = await client.request<Query>(GET_GROUPS, {
+      const data = await client.request<Query>(GET_MY_GROUPS, {
         limit: 10,
         offset: 0,
-        ownerId: session.user.id,
       });
-      return data.groups;
+      return data?.myGroups || [];
     },
     enabled: !!session?.backendToken,
   });

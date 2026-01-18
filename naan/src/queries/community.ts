@@ -1,8 +1,8 @@
 import { gql } from "../gql/gql";
 
 export const GET_GROUPS = gql(`
-  query GetGroups($limit: Int, $offset: Int, $ownerId: ID, $type: GroupType) {
-    groups(limit: $limit, offset: $offset, ownerId: $ownerId, type: $type) {
+  query GetGroups($limit: Int, $offset: Int) {
+    publicGroups(limit: $limit, offset: $offset) {
       id
       name
       description
@@ -17,6 +17,18 @@ export const GET_GROUPS = gql(`
         username
         avatar
       }
+    }
+  }
+`);
+
+export const GET_MY_GROUPS = gql(`
+  query GetMyGroups {
+    myGroups {
+      id
+      name
+      slug
+      membersCount
+      icon
     }
   }
 `);

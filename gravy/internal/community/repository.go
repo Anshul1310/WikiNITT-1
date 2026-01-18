@@ -24,6 +24,7 @@ type Repository interface {
 	DeleteGroup(ctx context.Context, groupID string) error
 	IsMember(ctx context.Context, groupID, userID string) (bool, error)
 	ListGroupsByMember(ctx context.Context, userID string) ([]*Group, error)
+	ListPublicGroupsByMember(ctx context.Context, userID string) ([]*Group, error)
 	UpdateGroup(ctx context.Context, groupID string, name *string, description *string, icon *string) (*Group, error)
 
 	CreatePost(ctx context.Context, post *Post) error
@@ -357,6 +358,22 @@ func (r *repository) DeleteGroup(ctx context.Context, groupID string) error {
 func (r *repository) ListGroupsByMember(ctx context.Context, userID string) ([]*Group, error) {
 	filter := bson.M{
 		"memberIds": userID,
+	}
+	cursor, err := r.db.Collection("groups").Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	var groups []*Group
+	if err := cursor.All(ctx, &groups); err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func (r *repository) ListPublicGroupsByMember(ctx context.Context, userID string) ([]*Group, error) {
+	filter := bson.M{
+		"memberIds": userID,
+		"type":      "PUBLIC",
 	}
 	cursor, err := r.db.Collection("groups").Find(ctx, filter)
 	if err != nil {

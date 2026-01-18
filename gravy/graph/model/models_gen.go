@@ -178,7 +178,6 @@ type PublicUser struct {
 	Avatar      string     `json:"avatar"`
 	Posts       []*Post    `json:"posts"`
 	Comments    []*Comment `json:"comments"`
-	Groups      []*Group   `json:"groups"`
 }
 
 type Query struct {
@@ -203,19 +202,18 @@ type UpdateUserInput struct {
 }
 
 type User struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Username      string   `json:"username"`
-	DisplayName   string   `json:"displayName"`
-	Email         string   `json:"email"`
-	Gender        string   `json:"gender"`
-	Avatar        string   `json:"avatar"`
-	PhoneNumber   string   `json:"phoneNumber"`
-	SetupComplete bool     `json:"setupComplete"`
-	IsAdmin       bool     `json:"isAdmin"`
-	IsBanned      bool     `json:"isBanned"`
-	CreatedAt     string   `json:"createdAt"`
-	Groups        []*Group `json:"groups"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Username      string `json:"username"`
+	DisplayName   string `json:"displayName"`
+	Email         string `json:"email"`
+	Gender        string `json:"gender"`
+	Avatar        string `json:"avatar"`
+	PhoneNumber   string `json:"phoneNumber"`
+	SetupComplete bool   `json:"setupComplete"`
+	IsAdmin       bool   `json:"isAdmin"`
+	IsBanned      bool   `json:"isBanned"`
+	CreatedAt     string `json:"createdAt"`
 }
 
 type ChannelType string

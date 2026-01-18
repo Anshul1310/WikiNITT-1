@@ -11,7 +11,6 @@ type User {
   isAdmin: Boolean!
   isBanned: Boolean!
   createdAt: String!
-  groups: [Group!]!
 }
 
 type PublicUser {
@@ -23,7 +22,6 @@ type PublicUser {
   avatar: String!
   posts(limit: Int, offset: Int): [Post!]!
   comments(limit: Int, offset: Int): [Comment!]!
-  groups: [Group!]!
 }
 
 input NewUser {

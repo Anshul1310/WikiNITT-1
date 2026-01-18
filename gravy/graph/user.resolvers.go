@@ -282,20 +282,6 @@ func (r *publicUserResolver) Comments(ctx context.Context, obj *model.PublicUser
 	return modelComments, nil
 }
 
-// Groups is the resolver for the groups field.
-func (r *publicUserResolver) Groups(ctx context.Context, obj *model.PublicUser) ([]*model.Group, error) {
-	groups, err := r.CommunityRepo.ListGroupsByMember(ctx, obj.ID)
-	if err != nil {
-		return nil, err
-	}
-	var modelGroups []*model.Group
-	for _, g := range groups {
-		owner, _ := r.UserRepo.GetByID(ctx, g.OwnerID)
-		modelGroups = append(modelGroups, mapGroupToModel(g, mapUserToPublic(owner)))
-	}
-	return modelGroups, nil
-}
-
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	users, err := r.UserRepo.List(ctx)
@@ -341,25 +327,7 @@ func (r *queryResolver) User(ctx context.Context, username string) (*model.Publi
 	return mapPublicUserToModel(mapUserToPublic(user)), nil
 }
 
-// Groups is the resolver for the groups field.
-func (r *userResolver) Groups(ctx context.Context, obj *model.User) ([]*model.Group, error) {
-	groups, err := r.CommunityRepo.ListGroupsByMember(ctx, obj.ID)
-	if err != nil {
-		return nil, err
-	}
-	var modelGroups []*model.Group
-	for _, g := range groups {
-		owner, _ := r.UserRepo.GetByID(ctx, g.OwnerID)
-		modelGroups = append(modelGroups, mapGroupToModel(g, mapUserToPublic(owner)))
-	}
-	return modelGroups, nil
-}
-
 // PublicUser returns PublicUserResolver implementation.
 func (r *Resolver) PublicUser() PublicUserResolver { return &publicUserResolver{r} }
 
-// User returns UserResolver implementation.
-func (r *Resolver) User() UserResolver { return &userResolver{r} }
-
 type publicUserResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }

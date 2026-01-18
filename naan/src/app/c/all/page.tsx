@@ -15,9 +15,8 @@ async function getGroups(token?: string) {
     const data = await client.request<Query>(GET_GROUPS, {
       limit: 50,
       offset: 0,
-      type: "PUBLIC",
     });
-    return data?.groups || [];
+    return data?.publicGroups || [];
   } catch (error) {
     console.error("Failed to fetch groups:", error);
     return [];

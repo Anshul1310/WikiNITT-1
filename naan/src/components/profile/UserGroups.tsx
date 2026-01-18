@@ -16,7 +16,7 @@ export default function UserGroups({ username }: UserGroupsProps) {
     const data = await request<GetUserGroupsQuery>(endpoint, GET_USER_GROUPS, {
       username,
     });
-    return data.user.groups;
+    return data.userGroups;
   };
 
   const {

@@ -50,7 +50,6 @@ export default function CommunityFeed() {
   });
 
   const allPosts = data ? data.pages.flatMap((page) => page) : [];
-  console.log(allPosts);
   const rowVirtualizer = useVirtualizer({
     count: allPosts.length,
     getScrollElement: () => parentRef.current,
