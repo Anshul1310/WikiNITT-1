@@ -14,21 +14,20 @@ export default function MobileCommunityList() {
   const { data: groups, isLoading } = useQuery({
     queryKey: ["publicGroups"],
     queryFn: async () => {
-      const endpoint =
-        process.env.NEXT_PUBLIC_GRAPHQL_API_URL ||
-        "http://localhost:8080/query";
-      const data = await request<Query>(endpoint, GET_GROUPS, {
+      const client = getGraphQLClient(session?.backendToken);
+      const data = await client.request<Query>(GET_GROUPS, {
         limit: 10,
         offset: 0,
       });
       return data.groups.filter((g) => g.type === "PUBLIC");
     },
+    enabled: !!session?.backendToken,
   });
 
   const { data: myGroups, isLoading: isLoadingMyGroups } = useQuery({
     queryKey: ["myGroups", session?.user?.id],
     queryFn: async () => {
-      if (!session?.user?.id) return [];
+      if (!session?.backendToken) return [];
       const client = getGraphQLClient(session.backendToken);
       const data = await client.request<Query>(GET_GROUPS, {
         limit: 10,
@@ -37,7 +36,7 @@ export default function MobileCommunityList() {
       });
       return data.groups;
     },
-    enabled: !!session?.user?.id,
+    enabled: !!session?.backendToken,
   });
 
   if (isLoading) {

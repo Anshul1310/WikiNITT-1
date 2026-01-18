@@ -46,10 +46,11 @@ export default function CommunityFeed() {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return allPages.length * PAGE_SIZE;
     },
+    enabled: !!session.data?.backendToken,
   });
 
   const allPosts = data ? data.pages.flatMap((page) => page) : [];
-
+  console.log(allPosts);
   const rowVirtualizer = useVirtualizer({
     count: allPosts.length,
     getScrollElement: () => parentRef.current,
