@@ -716,7 +716,6 @@ func (r *repository) VotePost(ctx context.Context, userID, postID string, voteTy
 
 	var existingVote Vote
 	err := r.db.Collection("votes").FindOne(ctx, bson.M{"userId": userID, "postId": postID}).Decode(&existingVote)
-	fmt.Printf("VotePost: userID=%s, postID=%s, voteType=%s, err=%v, existingVote=%+v\n", userID, postID, voteType, err, existingVote)
 
 	postOid, _ := bson.ObjectIDFromHex(postID)
 
@@ -811,7 +810,6 @@ func (r *repository) VotePost(ctx context.Context, userID, postID string, voteTy
 func (r *repository) GetUserVote(ctx context.Context, userID, postID string) (string, error) {
 	var vote Vote
 	err := r.db.Collection("votes").FindOne(ctx, bson.M{"userId": userID, "postId": postID}).Decode(&vote)
-	fmt.Printf("GetUserVote: userID=%s, postID=%s, err=%v, vote=%+v\n", userID, postID, err, vote)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return "NONE", nil

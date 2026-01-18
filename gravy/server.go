@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -18,10 +20,12 @@ import (
 	"github.com/pranava-mohan/wikinitt/gravy/internal/categories"
 	"github.com/pranava-mohan/wikinitt/gravy/internal/community"
 	"github.com/pranava-mohan/wikinitt/gravy/internal/db"
+	"github.com/pranava-mohan/wikinitt/gravy/internal/ratelimit"
 	"github.com/pranava-mohan/wikinitt/gravy/internal/search"
 	"github.com/pranava-mohan/wikinitt/gravy/internal/uploader"
 	"github.com/pranava-mohan/wikinitt/gravy/internal/users"
 	"github.com/rs/cors"
+	"golang.org/x/time/rate"
 )
 
 const defaultPort = "8080"
@@ -335,16 +339,66 @@ func main() {
 
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(c))
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", auth.Middleware(userRepo)(srv))
+	isProduction := strings.ToLower(os.Getenv("GO_ENV")) == "production"
+
+	var allowedOrigins []string
+	if isProduction {
+		allowedOrigins = []string{"https://wikinitt.netlify.app"}
+		log.Println("Running in PRODUCTION mode")
+	} else {
+		allowedOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000", "https://wikinitt.netlify.app"}
+		log.Println("Running in DEVELOPMENT mode")
+	}
 
 	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000", "https://wikinitt.netlify.app"},
+		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodOptions},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	})
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware.Handler(http.DefaultServeMux)))
+	mux := http.NewServeMux()
+
+	if isProduction {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"message":"GraphQL API available at /query"}`))
+		})
+	} else {
+		mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		log.Printf("GraphQL playground available at http://localhost:%s/", port)
+	}
+
+	mux.Handle("/query", auth.Middleware(userRepo)(srv))
+
+	var finalHandler http.Handler = mux
+
+	finalHandler = corsMiddleware.Handler(finalHandler)
+
+	if isProduction {
+		rateLimiter := ratelimit.NewIPRateLimiter(rate.Limit(10), 20)
+		finalHandler = ratelimit.Middleware(rateLimiter)(finalHandler)
+
+		finalHandler = http.TimeoutHandler(finalHandler, 30*time.Second, `{"errors":[{"message":"Request timeout"}]}`)
+
+		finalHandler = recoveryMiddleware(finalHandler)
+	}
+
+	log.Printf("Server starting on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, finalHandler))
+}
+
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("Panic recovered: %v", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"errors":[{"message":"Internal server error"}]}`))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }

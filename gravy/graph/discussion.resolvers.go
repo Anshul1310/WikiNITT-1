@@ -172,24 +172,18 @@ func (r *mutationResolver) DeleteGroup(ctx context.Context, groupID string) (boo
 		return false, fmt.Errorf("not authenticated")
 	}
 
-	fmt.Printf("DeleteGroup called for group %s by user %s\n", groupID, user.ID)
 	group, err := r.CommunityRepo.GetGroupByID(ctx, groupID)
 	if err != nil {
-		fmt.Printf("Error fetching group: %v\n", err)
 		return false, err
 	}
-	fmt.Printf("Group owner: %s\n", group.OwnerID)
 	if group.OwnerID != user.ID {
-		fmt.Printf("Access denied: owner %s != user %s\n", group.OwnerID, user.ID)
 		return false, fmt.Errorf("access denied: only group owner can delete group")
 	}
 
 	err = r.CommunityRepo.DeleteGroup(ctx, groupID)
 	if err != nil {
-		fmt.Printf("Error deleting group: %v\n", err)
 		return false, err
 	}
-	fmt.Println("Group deleted successfully")
 
 	return true, nil
 }

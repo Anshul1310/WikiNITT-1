@@ -25,7 +25,6 @@ func (c *Client) CreateIndexes() error {
 		PrimaryKey: "id",
 	})
 	if err != nil {
-		// Log error but continue as index might already exist
 		log.Printf("Error creating articles index (might exist): %v", err)
 	}
 

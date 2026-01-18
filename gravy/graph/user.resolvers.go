@@ -22,18 +22,15 @@ import (
 
 // SignIn is the resolver for the signIn field.
 func (r *mutationResolver) SignIn(ctx context.Context, input model.NewUser) (string, error) {
-	fmt.Printf("SignIn called for DauthID: %s\n", input.ID)
 	if input.MachineToken != os.Getenv("MACHINE_TOKEN") {
 		return "", fmt.Errorf("invalid machine token")
 	}
 
 	existingUser, err := r.UserRepo.GetByDauthID(ctx, input.ID)
 	if err == nil && existingUser != nil {
-		fmt.Printf("User found: %s, SetupComplete: %v\n", existingUser.ID, existingUser.SetupComplete)
 
 		return auth.GenerateToken(existingUser.ID)
 	}
-	fmt.Printf("User not found, creating new user for DauthID: %s\n", input.ID)
 
 	avatarURL, err := auth.AvatarGenerationAndCleanup(input.ID, r.Uploader)
 	if err != nil {
@@ -61,7 +58,6 @@ func (r *mutationResolver) SignIn(ctx context.Context, input model.NewUser) (str
 	if err := r.UserRepo.Create(ctx, &user); err != nil {
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
-	fmt.Printf("Created new user: %s\n", user.ID)
 
 	token, err := auth.GenerateToken(user.ID)
 	if err != nil {
@@ -92,7 +88,6 @@ func (r *mutationResolver) CompleteSetup(ctx context.Context, input model.Comple
 	if user == nil {
 		return "", fmt.Errorf("not authenticated")
 	}
-	fmt.Printf("CompleteSetup called for user: %s\n", user.ID)
 
 	usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 	if !usernameRegex.MatchString(input.Username) {
@@ -111,10 +106,8 @@ func (r *mutationResolver) CompleteSetup(ctx context.Context, input model.Comple
 
 	err = r.UserRepo.CompleteSetup(ctx, user.ID, sanitization.SanitizeString(input.Username), input.DisplayName)
 	if err != nil {
-		fmt.Printf("CompleteSetup failed: %v\n", err)
 		return "", fmt.Errorf("failed to complete setup: %w", err)
 	}
-	fmt.Printf("CompleteSetup success for user: %s\n", user.ID)
 
 	return "success", nil
 }

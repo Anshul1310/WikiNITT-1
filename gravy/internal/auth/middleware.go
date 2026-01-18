@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -39,11 +38,9 @@ func Middleware(userRepo users.Repository) func(http.Handler) http.Handler {
 
 			user, err := userRepo.GetByID(r.Context(), userID)
 			if err != nil {
-				fmt.Printf("Middleware: Failed to get user by ID: %s, error: %v\n", userID, err)
 				next.ServeHTTP(w, r)
 				return
 			}
-			fmt.Printf("Middleware: Authenticated user: %s\n", user.ID)
 
 			ctx := context.WithValue(r.Context(), userCtxKey, user)
 

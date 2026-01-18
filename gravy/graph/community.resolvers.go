@@ -883,21 +883,16 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int
 		o = int(*offset)
 	}
 
-	fmt.Printf("Fetching comments for post %s (limit: %d, offset: %d)\n", obj.ID, l, o)
-
 	comments, err := r.CommunityRepo.ListComments(ctx, obj.ID, nil, l, o)
 	if err != nil {
-		fmt.Printf("Error fetching comments: %v\n", err)
 		return nil, err
 	}
-	fmt.Printf("Found %d comments for post %s\n", len(comments), obj.ID)
 
 	var modelComments []*model.Comment
 	for _, c := range comments {
 		author, err := r.UserRepo.GetByID(ctx, c.AuthorID)
 		var authorPublic *users.PublicUser
 		if err != nil {
-			fmt.Printf("Error fetching author %s for comment %s: %v\n", c.AuthorID, c.ID, err)
 
 			authorPublic = &users.PublicUser{
 				ID:          "unknown",
@@ -920,7 +915,6 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int
 
 		post, err := r.CommunityRepo.GetPost(ctx, c.PostID)
 		if err != nil {
-			fmt.Printf("Error fetching post %s for comment %s: %v\n", c.PostID, c.ID, err)
 
 			post = &community.Post{
 				ID:      c.PostID,
@@ -952,7 +946,6 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int
 
 		group, err := r.CommunityRepo.GetGroupByID(ctx, post.GroupID)
 		if err != nil {
-			fmt.Printf("Error fetching group %s for post %s: %v\n", post.GroupID, post.ID, err)
 			group = &community.Group{
 				ID:   post.GroupID,
 				Name: "Unknown Group",
@@ -1056,10 +1049,8 @@ func (r *queryResolver) GroupByInviteToken(ctx context.Context, token string) (*
 
 // Post is the resolver for the post field.
 func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
-	fmt.Printf("Fetching post %s\n", id)
 	p, err := r.CommunityRepo.GetPost(ctx, id)
 	if err != nil {
-		fmt.Printf("Error fetching post %s: %v\n", id, err)
 		return nil, err
 	}
 	author, _ := r.UserRepo.GetByID(ctx, p.AuthorID)
