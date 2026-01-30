@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  
   turbopack: {
     rules: {
       "*.svg": {
@@ -27,6 +26,13 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "avatars.githubusercontent.com",
+        port: "",
+        pathname: "/**",
+      },
+      // 👇 Added this block for Unsplash images
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
         port: "",
         pathname: "/**",
       },

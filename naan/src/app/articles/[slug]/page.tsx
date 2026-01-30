@@ -1,105 +1,55 @@
-import Image from "next/image";
+import { request } from "graphql-request";
+import { GET_ARTICLE_BY_SLUG } from "@/gql/queries";
+import { Query } from "@/gql/graphql";
 import { notFound } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import FormattedDate from "@/components/FormattedDate";
-import { request, gql } from "graphql-request";
 import { Metadata } from "next";
-import { GET_ARTICLE_BY_SLUG } from "@/queries/article";
+import ArticleView from "@/components/ArticleView";
 
-type Article = {
-  title: string;
-  category: string;
-  createdAt: string;
-  author: {
-    name: string;
-    avatar?: string;
-  };
-  thumbnail?: string;
-  content: string;
+// Type definition for Next.js 15+ Page Props
+type Props = {
+  params: Promise<{ slug: string }>;
 };
 
-function rewriteInternalLinks(markdown: string) {
-  return markdown.replace(/(?<!\!)\]\((\/(?!\/)[^)]+)\)/g, "](\/articles$1)");
-}
-
-async function getArticle(slug: string): Promise<Article | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_GRAPHQL_API_URL;
-  if (!apiUrl) return null;
-
+// 1. Generate Metadata (SSR SEO)
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const data = await request<{ articleBySlug: Article | null }>(
-      apiUrl,
-      GET_ARTICLE_BY_SLUG ,
-      { slug },
-    );
-    return data.articleBySlug;
-  } catch {
-    return null; // IMPORTANT: prevents Next from screaming
+    const { slug } = await params; // 👈 Await params here
+    const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+    
+    const data = await request<Query>(endpoint, GET_ARTICLE_BY_SLUG, { slug });
+    
+    if (!data.articleBySlug) return { title: "Article Not Found" };
+
+    return {
+      title: `${data.articleBySlug.title} | WikiNITT`,
+      description: data.articleBySlug.content.substring(0, 160) + "...",
+      openGraph: {
+        images: [data.articleBySlug.thumbnail || "/images/placeholder.png"],
+      },
+    };
+  } catch (error) {
+    return { title: "Error | WikiNITT" };
   }
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
-  const article = await getArticle((await params).slug);
-  if (!article) return { title: "Article Not Found" };
+// 2. The Server Component
+export default async function ArticlePage({ params }: Props) {
+  const { slug } = await params; // 👈 Await params here (Crucial Fix)
+  const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+  
+  let articleData;
+  try {
+    const data = await request<Query>(endpoint, GET_ARTICLE_BY_SLUG, { slug });
+    articleData = data.articleBySlug;
+  } catch (error) {
+    console.error("Failed to fetch article:", error);
+    notFound();
+  }
 
-  return {
-    title: `${article.title} | WikiNITT`,
-    description: `Read about ${article.title}`,
-  };
-}
+  if (!articleData) {
+    notFound();
+  }
 
-export default async function ArticlePage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const article = await getArticle((await params).slug);
-  if (!article) notFound();
-
-  const content = rewriteInternalLinks(article.content);
-
-  return (
-    <article className="max-w-4xl mx-auto px-4 py-12">
-      <span className="inline-block px-3 py-1 mb-4 text-xs font-semibold uppercase bg-indigo-100 text-indigo-600 rounded-full">
-        {article.category}
-      </span>
-
-      <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-        {article.title}
-      </h1>
-
-      <div className="flex items-center space-x-4 mb-8">
-        <div className="h-12 w-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl">
-          {article.author.name.charAt(0)}
-        </div>
-        <div>
-          <p className="text-lg font-medium">{article.author.name}</p>
-          <p className="text-sm text-gray-500">
-            <FormattedDate date={article.createdAt} />
-          </p>
-        </div>
-      </div>
-
-      {article.thumbnail && (
-        <div className="relative w-full h-[400px] rounded-2xl overflow-hidden mb-12">
-          <Image
-            src={article.thumbnail}
-            alt={article.title}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-      )}
-
-      <div className="prose prose-lg max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkBreaks]}>{content}</ReactMarkdown>
-      </div>
-    </article>
-  );
+  // Pass data to the Client Component
+  return <ArticleView data={articleData} />;
 }

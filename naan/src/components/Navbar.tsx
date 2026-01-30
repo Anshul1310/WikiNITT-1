@@ -10,6 +10,9 @@ import {
   Home,
   BookOpen,
   Users,
+  Building2,
+  GraduationCap,
+  Tent,
   Menu,
   X,
   Search,
@@ -22,6 +25,7 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { signIn, useSession, signOut } from "next-auth/react";
 
+// 👇 FIX: Import from the correct file
 import { GET_ME } from "@/queries/user";
 import { useQuery } from "@tanstack/react-query";
 import { request } from "graphql-request";
@@ -167,21 +171,33 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Handle sidebar visibility based on Resize AND Pathname
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsMobile(true);
-        setIsSidebarOpen(false);
+    const handleResponsiveSidebar = () => {
+      const isMobileView = window.innerWidth < 768;
+      
+      // Check if we are on a specific article page (e.g. /articles/some-slug)
+      // We exclude the main list page "/articles"
+      const isArticlePage = pathname?.startsWith("/articles/") && pathname !== "/articles";
+
+      setIsMobile(isMobileView);
+
+      if (isMobileView) {
+        setIsSidebarOpen(false); // Always closed on mobile
       } else {
-        setIsMobile(false);
-        setIsSidebarOpen(true);
+        // On Desktop:
+        // If it's an article page, close sidebar for reading mode.
+        // If it's any other page, open it by default.
+        setIsSidebarOpen(!isArticlePage);
       }
     };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    // Run immediately on mount and when path changes
+    handleResponsiveSidebar();
+
+    window.addEventListener("resize", handleResponsiveSidebar);
+    return () => window.removeEventListener("resize", handleResponsiveSidebar);
+  }, [pathname]); 
 
   const navItems = [
     { name: "Home", href: "/", icon: Home, section: "main" },

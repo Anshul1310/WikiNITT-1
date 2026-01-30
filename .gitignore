@@ -3,3 +3,5 @@
 tmp/
 *.txt
 server
+naan/.env.example
+naan/.env.example
