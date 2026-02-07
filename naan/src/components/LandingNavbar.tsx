@@ -7,67 +7,91 @@ import {
 } from 'lucide-react'
 import LogoIcon from "@/components/logo.svg";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function LandingNavbar() {
+    const { status } = useSession();
+    const [scrolled, setScrolled] = useState(false);
 
-    const { status } = useSession()
+    // Add shadow/border only when scrolled
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     return (
-        <header className="sticky top-0 z-50 w-full bg-surface/90 backdrop-blur-md border-b border-border-light shadow-sm">
-            <div className="px-3 py-3 lg:px-5 lg:pl-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center justify-start rtl:justify-end">
-                        <button
-                            type="button"
-                            className="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg opacity-0 pointer-events-none cursor-default"
-                        >
-                            <span className="sr-only">Open sidebar</span>
-                            <Menu className="w-6 h-6" />
-                        </button>
-                        <div className="flex ms-2 items-center group">
-                            <LogoIcon className="h-8 w-8 mr-2 fill-white bg-blue-900 rounded-md p-1.5 group-hover:bg-blue-800 transition-colors" />
-                            <span className="self-center text-xl font-bold whitespace-nowrap text-blue-900">
-                                Wiki
-                            </span>
-                            <span className="self-center text-xl font-bold whitespace-nowrap text-amber-600">
-                                NITT
-                            </span>
-                        </div>
+        <header 
+            className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+                scrolled 
+                ? "bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm" 
+                : "bg-transparent border-b border-transparent"
+            }`}
+        >
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex h-16 items-center justify-between">
+                    
+                    {/* LEFT: Logo */}
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="flex items-center group gap-2.5">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-indigo-500 blur-lg opacity-20 rounded-full group-hover:opacity-40 transition-opacity"></div>
+                                <LogoIcon className="relative h-9 w-9 fill-white bg-gradient-to-br from-indigo-700 to-blue-700 rounded-xl p-1.5 shadow-lg group-hover:scale-105 transition-transform" />
+                            </div>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-lg font-bold text-slate-900 tracking-tight">
+                                    Wiki<span className="text-amber-600">NITT</span>
+                                </span>
+                            </div>
+                        </Link>
                     </div>
-                    <nav className="hidden md:flex items-center gap-8">
-                        <Link
-                            className="text-sm font-medium text-text-muted hover:text-blue-900 transition-colors"
-                            href="/articles"
-                        >
-                            Articles
-                        </Link>
-                        <Link
-                            className="text-sm font-medium text-text-muted hover:text-blue-900 transition-colors"
-                            href="/c"
-                        >
-                            Community
-                        </Link>
+
+                    {/* CENTER: Navigation Links (Desktop) */}
+                    <nav className="hidden md:flex items-center gap-1 bg-white/40 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/40 shadow-sm">
+                        {[
+                            { name: "Home", href: "/" },
+                            { name: "Articles", href: "/articles" },
+                            { name: "Community", href: "/c" },
+                            { name: "Map", href: "/map" },
+                        ].map((link) => (
+                            <Link
+                                key={link.name}
+                                className="px-5 py-1.5 text-sm font-medium text-slate-600 rounded-full hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all"
+                                href={link.href}
+                            >
+                                {link.name}
+                            </Link>
+                        ))}
                     </nav>
+
+                    {/* RIGHT: Auth & Mobile Menu */}
                     <div className="flex items-center gap-4">
                         {status === "loading" && (
-                            <div className="w-8 h-8 flex items-center justify-center">
-                                <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+                            <div className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-100">
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
                             </div>
                         )}
 
                         {status === "unauthenticated" && (
                             <button
                                 onClick={() => signIn("dauth")}
-                                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                className="rounded-full bg-slate-900 px-6 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-900/20 hover:bg-indigo-600 hover:shadow-indigo-600/30 hover:-translate-y-0.5 transition-all"
                             >
                                 Login
                             </button>
                         )}
 
                         {status === "authenticated" && <UserMenu />}
+
+                        {/* Mobile Menu Button */}
+                        <button className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                            <Menu className="w-6 h-6" />
+                        </button>
                     </div>
                 </div>
             </div>
         </header>
-    )
+    );
 }

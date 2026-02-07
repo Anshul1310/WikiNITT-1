@@ -9,6 +9,9 @@ import { request } from "graphql-request";
 import { GET_ARTICLES } from "@/gql/queries";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import FormattedDate from "@/components/FormattedDate";
+import { Sparkles, Clock, User, ArrowRight } from "lucide-react";
+import { twMerge } from "tailwind-merge";
+import { clsx } from "clsx";
 
 interface ArticlesViewProps {
   articles: Article[];
@@ -39,7 +42,7 @@ export default function ArticlesView({
     return data.articles;
   };
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
       queryKey: ["articles", selectedCategory],
       queryFn: fetchArticles,
@@ -60,7 +63,7 @@ export default function ArticlesView({
   const allArticles = data ? data.pages.flatMap((page) => page) : [];
 
   const numColumns = useMemo(() => {
-    if (containerWidth >= 1024) return 3;
+    if (containerWidth >= 1280) return 3;
     if (containerWidth >= 768) return 2;
     return 1;
   }, [containerWidth]);
@@ -71,7 +74,7 @@ export default function ArticlesView({
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 500,
+    estimateSize: () => 480, // Slightly reduced estimation for cleaner look
     overscan: 5,
   });
 
@@ -103,36 +106,45 @@ export default function ArticlesView({
   ]);
 
   return (
-    <>
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl mb-4">
-          Latest <span className="text-indigo-600">Articles</span>
-        </h1>
-        <p className="max-w-2xl mx-auto text-xl text-gray-500">
-          Stories, updates, and insights from the NIT Trichy community.
+    <div className="space-y-10">
+      {/* Header Section */}
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/50 backdrop-blur-sm px-4 py-1 text-xs font-bold text-indigo-600 shadow-sm mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            Discover Knowledge
+        </div>
+        <h2 className="text-4xl md:text-5xl font-serif font-black text-slate-900 tracking-tight">
+          Explore <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">Articles</span>
+        </h2>
+        <p className="max-w-2xl mx-auto text-lg text-slate-500 font-light leading-relaxed">
+          Curated stories, academic resources, and campus guides written by the community.
         </p>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2 mb-12">
+      {/* Category Filter Chips */}
+      <div className="flex flex-wrap justify-center gap-3">
         {categories.map((category) => (
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+            className={twMerge(
+              "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border backdrop-blur-md active:scale-95",
               selectedCategory === category
-                ? "bg-indigo-600 text-white shadow-md transform scale-105"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-            }`}
+                ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-200"
+                : "bg-white/40 text-slate-600 border-white/60 hover:bg-white/80 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-sm"
+            )}
           >
             {category}
           </button>
         ))}
       </div>
 
+      {/* Virtualized Grid */}
       <div
         ref={parentRef}
+        className="custom-scrollbar"
         style={{
-          height: "800px",
+          height: "800px", // Fixed height for virtualizer container
           width: "100%",
           overflow: "auto",
         }}
@@ -162,80 +174,92 @@ export default function ArticlesView({
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                className="flex gap-8 px-4"
+                className="flex gap-6 lg:gap-8 px-2 pb-6" // Padding for shadow
               >
                 {rowArticles.map((article) => (
                   <article
                     key={article.id}
-                    className="flex flex-col bg-white rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 group w-full"
                     style={{
-                      width: `calc((100% - ${
-                        (numColumns - 1) * 32
-                      }px) / ${numColumns})`,
+                      width: `calc((100% - ${(numColumns - 1) * 32}px) / ${numColumns})`,
                     }}
+                    className="group flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
                   >
-                    <div className="relative h-48 w-full overflow-hidden">
+                    {/* Image Section */}
+                    <div className="relative h-56 w-full overflow-hidden">
                       <Image
-                        src={article.thumbnail || "/images/placeholder.png"}
+                        src={article.thumbnail || "/nitt.jpg"}
                         alt={article.title}
                         fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-60" />
+                      
                       <div className="absolute top-4 left-4">
-                        <span className="inline-block px-3 py-1 text-xs font-semibold tracking-wider uppercase bg-white/90 backdrop-blur-sm text-indigo-600 rounded-full shadow-sm">
+                        <span className="inline-block px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-white/95 backdrop-blur-md text-indigo-700 rounded-lg shadow-sm">
                           {article.category}
                         </span>
                       </div>
                     </div>
+
+                    {/* Content Section */}
                     <div className="p-6 flex-1 flex flex-col">
-                      <div className="flex items-center text-sm text-gray-500 mb-4">
-                        <time dateTime={article.createdAt}>
-                          <FormattedDate date={article.createdAt} />
-                        </time>
-                        <span className="mx-2">•</span>
+                      <div className="flex items-center gap-3 text-xs font-medium text-slate-500 mb-3">
+                        <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                            <FormattedDate date={article.createdAt} />
+                        </div>
+                        <span className="w-1 h-1 rounded-full bg-slate-300" />
                         <span>5 min read</span>
                       </div>
+
                       <Link
                         href={`/articles/${article.slug}`}
-                        className="block mt-2 group-hover:text-indigo-600 transition-colors duration-200"
+                        className="block mb-3 group-hover:text-indigo-600 transition-colors duration-200"
                       >
-                        <h3 className="text-xl font-bold text-gray-900">
+                        <h3 className="text-xl font-bold text-slate-900 leading-tight line-clamp-2 font-serif">
                           {article.title}
                         </h3>
                       </Link>
-                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+
+                      <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed mb-6 font-light">
                         {article.description}
                       </p>
-                      <div className="mt-auto pt-6 border-t border-gray-100 flex items-center">
-                        <div className="shrink-0">
-                          {article.author?.avatar ? (
-                            <div className="relative h-10 w-10 overflow-hidden rounded-full">
+
+                      <div className="mt-auto pt-5 border-t border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-9 w-9 rounded-full overflow-hidden border border-white shadow-sm ring-1 ring-slate-100">
+                            {article.author?.avatar ? (
                               <Image
                                 src={article.author.avatar}
                                 alt={article.author.name}
                                 fill
                                 className="object-cover"
                               />
-                            </div>
-                          ) : (
-                            <span className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                              {article.author?.name?.charAt(0) || "?"}
+                            ) : (
+                              <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                <User className="w-4 h-4" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-800">
+                                {article.author?.name || "Unknown"}
                             </span>
-                          )}
+                            <span className="text-[10px] text-slate-400 font-medium">Author</span>
+                          </div>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            {article.author?.name || "Unknown"}
-                          </p>
-                          <p className="text-xs text-gray-500">Author</p>
+
+                        <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                            <ArrowRight className="w-4 h-4" />
                         </div>
                       </div>
                     </div>
                   </article>
                 ))}
+                
                 {isFetchingNextPage && virtualRow.index === rowCount - 1 && (
-                  <div className="w-full flex justify-center items-center">
-                    Loading more...
+                  <div className="absolute bottom-0 w-full flex justify-center items-center py-4">
+                     <span className="text-sm text-indigo-500 font-medium animate-pulse">Loading more stories...</span>
                   </div>
                 )}
               </div>
@@ -243,6 +267,23 @@ export default function ArticlesView({
           })}
         </div>
       </div>
-    </>
+      
+      {/* Scrollbar Styles */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(99, 102, 241, 0.2);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(99, 102, 241, 0.4);
+        }
+      `}</style>
+    </div>
   );
 }

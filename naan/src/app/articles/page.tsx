@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import ArticlesView from "@/components/ArticlesView";
 import { request } from "graphql-request";
 import { GET_ARTICLES } from "@/gql/queries";
-import { Article, Query } from "@/gql/graphql";
+import { Query } from "@/gql/graphql";
 
 async function getArticles() {
   const endpoint =
@@ -42,11 +42,25 @@ export default async function ArticlesPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {}
-        <FeaturedCarousel articles={featuredArticles} />
-        <ArticlesView articles={articles} />
+    <div className="relative min-h-screen font-sans antialiased text-slate-900 selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+      
+      {/* === BACKGROUND MESH === */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#f4f7fa]">
+        <div className="absolute top-[-50%] left-[-20%] w-[80%] h-[80%] rounded-full bg-blue-100/50 blur-[100px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-100/50 blur-[100px]" />
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      </div>
+
+      <div className="relative z-10 max-w-[1440px] mx-auto py-24 px-4 sm:px-6 lg:px-8 space-y-16">
+        {/* Featured Section */}
+        <section>
+             <FeaturedCarousel articles={featuredArticles} />
+        </section>
+        
+        {/* Main Grid Section */}
+        <section>
+            <ArticlesView articles={articles} />
+        </section>
       </div>
     </div>
   );

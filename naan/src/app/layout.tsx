@@ -4,6 +4,7 @@ import { Inter, Merriweather } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ChatFAB from "@/components/ChatFAB";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default function RootLayout({
             {children}
             <Footer />
           </Navbar>
+          <ChatFAB/>
         </Providers>
       </body>
     </html>
