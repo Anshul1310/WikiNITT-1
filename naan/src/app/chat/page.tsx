@@ -1,4 +1,3 @@
-// naan/src/app/chat/page.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -6,7 +5,6 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './chat.module.css';
 
-// --- Icons ---
 const ArrowLeftIcon = () => (
   <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.2em" width="1.2em">
     <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -25,7 +23,6 @@ const SparkleIcon = () => (
   </svg>
 );
 
-// --- Data ---
 const POPULAR_QUESTIONS = [
   "How to reach NIT Trichy?",
   "Hostel admission procedure?",
@@ -38,18 +35,30 @@ interface Message {
   role: 'user' | 'bot';
   content: string;
   isTyping?: boolean;
+  status?: string;
+  isStreaming?: boolean;
 }
 
 export default function ChatPage() {
   const router = useRouter(); // Initialize Router
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // --- Chat Logic ---
   const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => scrollToBottom(), [messages]);
+
+  const [sessionId, setSessionId] = useState<string>('');
+
+  useEffect(() => {
+    let storedSessionId = sessionStorage.getItem('wikinitt_session_id');
+    if (!storedSessionId) {
+      storedSessionId = crypto.randomUUID();
+      sessionStorage.setItem('wikinitt_session_id', storedSessionId);
+    }
+    setSessionId(storedSessionId);
+  }, []);
 
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || input;
@@ -59,29 +68,92 @@ export default function ChatPage() {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
 
-    // Simulate Bot Response
-    setTimeout(() => {
-      let botResponse = "I am the NIT Trichy Campus Bot. I can help you navigate the campus, find info about hostels, or academic details.";
-      
-      const lowerText = textToSend.toLowerCase();
-      if (lowerText.includes("reach")) {
-        botResponse = "NIT Trichy is located on the Trichy-Thanjavur highway (NH 67). It's about 22 km from the Railway Station (TPJ) and 17 km from the Airport.";
-      } else if (lowerText.includes("hostel")) {
-        botResponse = "Hostel admission starts during physical reporting. First years are allotted Amber, Agate, or Garnet blocks.";
-      } else if (lowerText.includes("mess")) {
-        botResponse = "Feathers, 1986, and Annapurna are popular choices. The menu changes monthly based on student council recommendations.";
-      } else if (lowerText.includes("department")) {
-        botResponse = "We have over 10 departments including CSE, ECE, EEE, Mechanical, Civil, and more.";
+    const botMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: botMsgId,
+      role: 'bot',
+      content: '',
+      isTyping: false,
+      isStreaming: true
+    }]);
+
+    try {
+      const response = await fetch('http://localhost:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: textToSend,
+          session_id: sessionId
+        })
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.body) throw new Error('No response body');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last partial line in 
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+
+            if (data.type === 'status') {
+              setMessages(prev => prev.map(msg =>
+                msg.id === botMsgId
+                  ? { ...msg, status: data.content }
+                  : msg
+              ));
+            } else if (data.type === 'text_chunk') {
+              // Append chunk to content
+              setMessages(prev => prev.map(msg =>
+                msg.id === botMsgId
+                  ? { ...msg, content: (msg.content || '') + data.content, status: undefined }
+                  : msg
+              ));
+            } else if (data.type === 'text') {
+              // Legacy/Full text replacement (fallback)
+              setMessages(prev => prev.map(msg =>
+                msg.id === botMsgId
+                  ? { ...msg, content: data.content, status: undefined } // Clear status on final answer
+                  : msg
+              ));
+            } else if (data.type === 'error') {
+              setMessages(prev => prev.map(msg =>
+                msg.id === botMsgId
+                  ? { ...msg, content: `Error: ${data.content}` }
+                  : msg
+              ));
+            }
+          } catch (e) {
+            console.error("Error parsing stream line:", line, e);
+          }
+        }
       }
 
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'bot',
-        content: botResponse,
-        isTyping: true
-      };
-      setMessages(prev => [...prev, botMsg]);
-    }, 800);
+      // Stream finished
+      setMessages(prev => prev.map(msg =>
+        msg.id === botMsgId
+          ? { ...msg, isStreaming: false }
+          : msg
+      ));
+
+    } catch (error) {
+      console.error("Chat Error:", error);
+      setMessages(prev => prev.map(msg =>
+        msg.id === botMsgId
+          ? { ...msg, content: "Sorry, connection failed.", isStreaming: false }
+          : msg
+      ));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -102,79 +174,91 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className={styles.main}>
-        
+
         {/* Header with Back Button */}
         <div className={styles.header}>
-            <div className={styles.headerLeft}>
-                <button className={styles.backBtn} onClick={() => router.back()} title="Go Back">
-                    <ArrowLeftIcon />
-                </button>
-                <div className={styles.headerTitle}>
-                    <span style={{color: '#4f46e5'}}>●</span> NITT Assistant
-                </div>
+          <div className={styles.headerLeft}>
+            <button className={styles.backBtn} onClick={() => router.back()} title="Go Back">
+              <ArrowLeftIcon />
+            </button>
+            <div className={styles.headerTitle}>
+              <span style={{ color: '#4f46e5' }}>●</span> NITT Assistant
             </div>
+          </div>
 
-            {messages.length > 0 && (
-                <button className={styles.newChatBtn} onClick={() => setMessages([])}>
-                    <span style={{marginRight: '6px'}}>+</span> New Chat
-                </button>
-            )}
+          {messages.length > 0 && (
+            <button className={styles.newChatBtn} onClick={() => setMessages([])}>
+              <span style={{ marginRight: '6px' }}>+</span> New Chat
+            </button>
+          )}
         </div>
 
         <div className={styles.chatScrollArea}>
           <AnimatePresence mode="wait">
             {messages.length === 0 ? (
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className={styles.emptyStateContainer}
-                    key="empty"
-                >
-                    <div className={styles.logoWrapper}>
-                         <div className={styles.logoText}>N</div>
-                    </div>
-                    <h1 className={styles.welcomeHeadline}>Hello, Student</h1>
-                    <p className={styles.welcomeSub}>How can I help you with NIT Trichy today?</p>
-                    
-                    {/* MOST POPULAR QUESTIONS GRID */}
-                    <div className={styles.suggestionsGrid}>
-                        {POPULAR_QUESTIONS.map((q, i) => (
-                            <button key={i} className={styles.suggestionCard} onClick={() => handleSend(q)}>
-                                <div className={styles.cardIcon}><SparkleIcon /></div>
-                                <span className={styles.cardText}>{q}</span>
-                            </button>
-                        ))}
-                    </div>
-                </motion.div>
-            ) : (
-                <div key="chat">
-                    {messages.map((msg) => (
-                        <div key={msg.id} className={`${styles.messageRow} ${msg.role === 'bot' ? styles.botRow : ''}`}>
-                        <div className={`${styles.messageContent} ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                            {msg.role === 'bot' && (
-                                <div className={`${styles.avatar} ${styles.botAvatar}`}>AI</div>
-                            )}
-                            
-                            <div className={`${styles.bubble} ${msg.role === 'user' ? styles.userBubble : styles.botBubble}`}>
-                                {msg.isTyping ? (
-                                    <Typewriter 
-                                    text={msg.content} 
-                                    onComplete={() => {
-                                        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isTyping: false } : m));
-                                    }} 
-                                    />
-                                ) : msg.content}
-                            </div>
-
-                            {msg.role === 'user' && (
-                                <div className={`${styles.avatar} ${styles.userAvatar}`}>You</div>
-                            )}
-                        </div>
-                        </div>
-                    ))}
-                    <div ref={bottomRef} style={{ height: '1px' }} />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={styles.emptyStateContainer}
+                key="empty"
+              >
+                <div className={styles.logoWrapper}>
+                  <div className={styles.logoText}>N</div>
                 </div>
+                <h1 className={styles.welcomeHeadline}>Hello, Student</h1>
+                <p className={styles.welcomeSub}>How can I help you with NIT Trichy today?</p>
+
+                {/* MOST POPULAR QUESTIONS GRID */}
+                <div className={styles.suggestionsGrid}>
+                  {POPULAR_QUESTIONS.map((q, i) => (
+                    <button key={i} className={styles.suggestionCard} onClick={() => handleSend(q)}>
+                      <div className={styles.cardIcon}><SparkleIcon /></div>
+                      <span className={styles.cardText}>{q}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              <div key="chat">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`${styles.messageRow} ${msg.role === 'bot' ? styles.botRow : ''}`}>
+                    <div className={`${styles.messageContent} ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                      {msg.role === 'bot' && (
+                        <div className={`${styles.avatar} ${styles.botAvatar}`}>AI</div>
+                      )}
+
+                      <div className={`${styles.bubble} ${msg.role === 'user' ? styles.userBubble : styles.botBubble}`}>
+                        {msg.isTyping ? (
+                          <Typewriter
+                            text={msg.content}
+                            onComplete={() => {
+                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isTyping: false } : m));
+                            }}
+                          />
+                        ) : (
+                          <div className="whitespace-pre-wrap relative">
+                            {msg.content}
+                            {msg.isStreaming && (
+                              <span className={styles.cursor}></span>
+                            )}
+                            {msg.status && (
+                              <div className="mt-2 text-xs text-indigo-200 italic flex items-center gap-1">
+                                <SparkleIcon /> {msg.status}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {msg.role === 'user' && (
+                        <div className={`${styles.avatar} ${styles.userAvatar}`}>You</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} style={{ height: '1px' }} />
+              </div>
             )}
           </AnimatePresence>
         </div>
@@ -190,7 +274,7 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button 
+            <button
               className={`${styles.sendButton} ${input.trim() ? styles.active : ''}`}
               onClick={() => handleSend()}
             >
@@ -209,7 +293,7 @@ export default function ChatPage() {
 // --- Helper Components ---
 const Typewriter = ({ text, onComplete }: { text: string, onComplete: () => void }) => {
   const [display, setDisplay] = useState('');
-  
+
   useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {

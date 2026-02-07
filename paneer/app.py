@@ -18,9 +18,14 @@ MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 def format_docs(docs):
     """Helper to join retrieved document chunks into a single string."""
-    return "\n\n".join(doc.page_content for doc in docs)
+    formatted_docs = []
+    for doc in docs:
+        source = doc.metadata.get("source_url", "Unknown Source")
+        content = doc.page_content.replace("\n", " ")
+        formatted_docs.append(f"Content: {content}\nSource: {source}")
+    return "\n\n".join(formatted_docs)
 
-def start_wikinitt_chat():
+def get_chat_agent():
     if not MISTRAL_API_KEY:
         print("Error: MISTRAL_API_KEY not found. Please set it.")
         return
@@ -51,8 +56,7 @@ def start_wikinitt_chat():
         description="Searches for information about NIT Trichy, courses, events, campus details, and academic regulations. Use this whenever you need factual information about the institute."
     )
     tools = [tool]
-    tools_map = {t.name: t for t in tools}
-
+    
     llm = ChatMistralAI(
         model="mistral-small-latest",
         temperature=0.3,
@@ -60,6 +64,25 @@ def start_wikinitt_chat():
     )
     
     llm_with_tools = llm.bind_tools(tools)
+    return llm_with_tools, tools
+
+def start_wikinitt_chat():
+    if not MISTRAL_API_KEY:
+        print("Error: MISTRAL_API_KEY not found. Please set it.")
+        return
+
+    if not os.path.exists(DB_DIRECTORY):
+        print(f"Error: DB directory '{DB_DIRECTORY}' not found.")
+        return
+
+    print("Initializing Agent...")
+    try:
+        llm_with_tools, tools = get_chat_agent()
+    except Exception as e:
+        print(f"Error initializing agent: {e}")
+        return
+
+    tools_map = {t.name: t for t in tools}
 
     system_message = SystemMessage(content="""You are WikiNITT, an intelligent and deep-thinking AI assistant for NIT Trichy.
 
@@ -68,13 +91,14 @@ def start_wikinitt_chat():
     2. **Multi-Step Search**: If the user's query is complex, break it down. You can search multiple times if the first search doesn't give you everything.
     3. **Context Awareness**: Remember previous interactions.
     4. **Honesty & Clarity**: If you cannot find the answer in the context or tools, admit it. Do not hallucinate.
+    5. **Citations**: ALWAYS cite your sources. When you use information from the `search_nitt_data` tool, the context will have a "Source: <url>" line. You must include these URLs in your response as markdown links, e.g., [Source Title](url).
 
     PROCESS:
     - Step 1: Analyze the user's request.
     - Step 2: Formulate a plan. Ask yourself "What do I need to know?".
     - Step 3: Use the `search_nitt_data` tool to gather facts.
     - Step 4: Analyze the search results. Is it enough? If not, search again with a better query.
-    - Step 5: Synthesize the final answer.
+    - Step 5: Synthesize the final answer with CITATIONS.
     """)
 
     print("\n" + "="*50)
