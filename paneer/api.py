@@ -1,11 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from app import get_chat_agent
+from app import get_chat_agent, get_retriever
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+from langchain_core.documents import Document
 import uvicorn
 import json
+import uuid
+
+# ... (rest of imports)
+
+# Data Models
+class AdminDocument(BaseModel):
+    id: str
+    source_url: str
+    title: str
+    content: str
+    type: str
+
+class CrawlRequest(BaseModel):
+    pages: int = 20
 
 app = FastAPI()
 
@@ -174,6 +189,131 @@ async def chat_generator(user_input: str, session_id: str):
     except Exception as e:
         print(f"Error processing chat: {e}")
         yield json.dumps({"type": "error", "content": str(e)}) + "\n"
+
+@app.get("/admin/documents")
+async def list_documents(page: int = 1, limit: int = 20):
+    retriever = get_retriever()
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever not initialized")
+    
+    docs = []
+    store = retriever.docstore
+    
+    # Get all keys first (inefficient for large datasets but fine for <1000 docs)
+    all_keys = list(store.yield_keys())
+    total_docs = len(all_keys)
+    
+    # Calculate slice
+    start = (page - 1) * limit
+    end = start + limit
+    sliced_keys = all_keys[start:end]
+    
+    if sliced_keys:
+        # Batch get documents
+        retrieved_docs = store.mget(sliced_keys)
+        for i, doc in enumerate(retrieved_docs):
+            if doc:
+                docs.append(AdminDocument(
+                    id=sliced_keys[i],
+                    source_url=doc.metadata.get("source_url", ""),
+                    title=doc.metadata.get("title", "Untitled"),
+                    content=doc.page_content,
+                    type=doc.metadata.get("content_type", "unknown")
+                ))
+
+    return {
+        "items": docs,
+        "total": total_docs,
+        "page": page,
+        "size": limit,
+        "pages": (total_docs + limit - 1) // limit
+    }
+
+@app.post("/admin/documents")
+async def add_document(doc: AdminDocument):
+    retriever = get_retriever()
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever not initialized")
+    
+    # If ID is not provided, generate one
+    doc_id = doc.id if doc.id else str(uuid.uuid4())
+    
+    new_doc = Document(
+        page_content=doc.content,
+        metadata={
+            "source_url": doc.source_url,
+            "title": doc.title,
+            "content_type": "manual"
+        }
+    )
+    
+    retriever.add_documents([new_doc], ids=[doc_id])
+    return {"status": "success", "message": "Document added"}
+
+@app.put("/admin/documents/{doc_id}")
+async def update_document(doc_id: str, doc: AdminDocument):
+    retriever = get_retriever()
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever not initialized")
+        
+    store = retriever.docstore
+    # Verify existence
+    existing = store.mget([doc_id])[0]
+    if not existing:
+         raise HTTPException(status_code=404, detail="Document not found")
+         
+    # Create updated document. Preserve 'manual' type or update it.
+    new_doc = Document(
+        page_content=doc.content,
+        metadata={
+            "source_url": doc.source_url,
+            "title": doc.title,
+            "content_type": existing.metadata.get("content_type", "manual") 
+        }
+    )
+    
+    # In ParentDocumentRetriever, add_documents with same ID should obey the docstore update 
+    # but the vector store part might duplicate child chunks if IDs aren't managed perfectly.
+    # To be safe, we might ideally remove and read, but add_documents typically handles overwrites in KV store.
+    # For vector store, it adds new chunks. Old chunks might remain as ghosts unless we delete first.
+    
+    # 1. Delete old (best effort)
+    store.mdelete([doc_id]) 
+    
+    # 2. Add new
+    retriever.add_documents([new_doc], ids=[doc_id])
+    
+    return {"status": "success", "message": "Document updated"}
+
+@app.delete("/admin/documents/{doc_id}")
+async def delete_document(doc_id: str):
+    retriever = get_retriever()
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever not initialized")
+    
+    store = retriever.docstore
+    # Delete from docstore
+    store.mdelete([doc_id])
+    
+    # Note: Deleting from VectorStore is harder because ParentDocumentRetriever 
+    # doesn't expose a direct way to delete child chunks by parent ID easily 
+    # without deeper access. For now, removing from Parent Store effectively 
+    # breaks the retrieval link, or we can look into cleaning up orphans later.
+    
+    return {"status": "success", "message": "Document deleted"}
+
+@app.post("/admin/crawl")
+async def trigger_crawl(request: CrawlRequest):
+    import subprocess
+    try:
+        # Run scrapy as a subprocess
+        subprocess.Popen(
+            ["scrapy", "crawl", "nitt", "-s", f"CLOSESPIDER_PAGECOUNT={request.pages}"],
+            cwd="bablu" 
+        )
+        return {"status": "success", "message": "Crawl started in background"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):

@@ -7,6 +7,11 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 BOT_NAME = "bablu"
 
 SPIDER_MODULES = ["bablu.spiders"]
@@ -107,6 +112,8 @@ ITEM_PIPELINES = {
     'bablu.pipelines.SmartRagPipeline': 300,
 }
 
-GROQ_API_KEYS = os.getenv("GROQ_API_KEYS").split(",")
+GROQ_API_KEYS = os.getenv("GROQ_API_KEYS", "").split(",")
+if GROQ_API_KEYS == [""]:
+    GROQ_API_KEYS = []
 VECTOR_DB_PATH = "nitt_vector_db"
 PARENT_STORE_PATH = "nitt_parent_store"

@@ -34,9 +34,10 @@ def get_chat_agent():
         print("Error: MISTRAL_API_KEY not found. Please set it.")
         return
 
+def get_retriever():
     if not os.path.exists(DB_DIRECTORY):
         print(f"Error: DB directory '{DB_DIRECTORY}' not found.")
-        return
+        return None
 
     print("Loading Embedding Model...")
     embedding_function = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
@@ -61,6 +62,16 @@ def get_chat_agent():
         child_splitter=child_splitter,
         parent_splitter=parent_splitter,
     )
+    return retriever
+
+def get_chat_agent():
+    if not MISTRAL_API_KEY:
+        print("Error: MISTRAL_API_KEY not found. Please set it.")
+        return
+
+    retriever = get_retriever()
+    if not retriever:
+        return
     
     def search_nitt_func(query: str):
         """Searches for information about NIT Trichy."""

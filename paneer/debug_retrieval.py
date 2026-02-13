@@ -65,7 +65,7 @@ def debug_db():
         print(f"Retriever found {len(docs)} documents.")
         for i, doc in enumerate(docs):
             print(f"--- Doc {i} ---")
-            print(doc.page_content[:200])
+            print(doc.page_content)
             print(doc.metadata)
     except Exception as e:
         print(f"Retriever Error: {e}")

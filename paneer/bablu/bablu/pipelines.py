@@ -187,8 +187,14 @@ class SmartRagPipeline:
                 if res.get("status") == "keep":
                     original_item = next((x for x in items if x['url'] == res['url']), None)
                     if original_item:
+                        # Append questions to content for better retrieval (HyDE approach)
+                        content = res.get("rewritten_text", "")
+                        questions = res.get("questions", [])
+                        if questions:
+                            content += "\n\nPotential Questions:\n" + "\n".join([f"- {q}" for q in questions])
+                        
                         doc = Document(
-                            page_content=res.get("rewritten_text", ""),
+                            page_content=content,
                             metadata={
                                 "source_url": original_item['url'],
                                 "title": original_item.get('title', ''),
@@ -234,6 +240,7 @@ class SmartRagPipeline:
         1. **Filter**: Discard if it is navigational junk, old tenders (<2023), or empty.
         2. **Rewrite**: If valid, rewrite the content into a clear, dense paragraph. 
            - **CRITICAL**: Include the Source URL and context (e.g., "According to the PhD regulations at [URL]...").
+        3. **Questions**: Generate 3-5 potential questions that this document answers.
         
         OUTPUT format must be a strictly valid JSON list. 
         DO NOT include any explanation, preamble, or markdown formatting (no ```json). 
@@ -245,7 +252,8 @@ class SmartRagPipeline:
             "status": "keep", 
             "audience": "Student",
             "topic": "Hostel Fees",
-            "rewritten_text": "The hostel fees..."
+            "rewritten_text": "The hostel fees...",
+            "questions": ["What is the hostel fee?", "How to pay hostel fees?"]
           }}
         ]
         """
