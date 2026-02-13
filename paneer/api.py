@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -8,8 +8,13 @@ from langchain_core.documents import Document
 import uvicorn
 import json
 import uuid
+import shutil
+import os
+import pymupdf4llm
+from utils import RagProcessor
+from dotenv import load_dotenv
 
-# ... (rest of imports)
+load_dotenv()
 
 # Data Models
 class AdminDocument(BaseModel):
@@ -21,6 +26,10 @@ class AdminDocument(BaseModel):
 
 class CrawlRequest(BaseModel):
     pages: int = 20
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str
 
 app = FastAPI()
 
@@ -60,10 +69,6 @@ PROCESS:
     - **PARTIAL DATA**: If a document looks like a fragment, a list, or a CV, **EXTRACT whatever facts you can**. Do not dismiss data just because it says "page 1 of 8" or looks cut off. If it mentions a name, a date, or a qualification, **USE IT**.
 - **Phase 4: Final Answer**: Provide the final response to the user OUTSIDE the `<thinking>` tags.
 """)
-
-class ChatRequest(BaseModel):
-    message: str
-    session_id: str
 
 async def chat_generator(user_input: str, session_id: str):
     if not llm_with_tools:
@@ -190,6 +195,13 @@ async def chat_generator(user_input: str, session_id: str):
         print(f"Error processing chat: {e}")
         yield json.dumps({"type": "error", "content": str(e)}) + "\n"
 
+# Initialize RAG Processor
+GROQ_API_KEYS = []
+if os.getenv("GROQ_API_KEYS"):
+    GROQ_API_KEYS = os.getenv("GROQ_API_KEYS", "").split(",")
+
+rag_processor = RagProcessor(GROQ_API_KEYS)
+
 @app.get("/admin/documents")
 async def list_documents(page: int = 1, limit: int = 20):
     retriever = get_retriever()
@@ -229,8 +241,25 @@ async def list_documents(page: int = 1, limit: int = 20):
         "pages": (total_docs + limit - 1) // limit
     }
 
+@app.post("/admin/parse-pdf")
+async def parse_pdf(file: UploadFile = File(...)):
+    try:
+        temp_file = f"temp_{uuid.uuid4()}.pdf"
+        with open(temp_file, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Convert to markdown
+        md_text = pymupdf4llm.to_markdown(temp_file)
+        
+        os.remove(temp_file)
+        return {"text": md_text}
+    except Exception as e:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        raise HTTPException(status_code=500, detail=f"PDF Parsing failed: {str(e)}")
+
 @app.post("/admin/documents")
-async def add_document(doc: AdminDocument):
+async def add_document(doc: AdminDocument, process: bool = False):
     retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
@@ -238,20 +267,32 @@ async def add_document(doc: AdminDocument):
     # If ID is not provided, generate one
     doc_id = doc.id if doc.id else str(uuid.uuid4())
     
+    final_content = doc.content
+    final_metadata = {
+        "source_url": doc.source_url,
+        "title": doc.title,
+        "content_type": "manual"
+    }
+    
+    if process:
+        processed = rag_processor.process_document(doc.content, doc.source_url)
+        if processed:
+            final_content = processed["content"]
+            final_metadata.update(processed["metadata"])
+            final_metadata["content_type"] = "processed_manual"
+        else:
+             print("Warning: LLM processing failed or filtered content. Using original.")
+
     new_doc = Document(
-        page_content=doc.content,
-        metadata={
-            "source_url": doc.source_url,
-            "title": doc.title,
-            "content_type": "manual"
-        }
+        page_content=final_content,
+        metadata=final_metadata
     )
     
     retriever.add_documents([new_doc], ids=[doc_id])
     return {"status": "success", "message": "Document added"}
 
 @app.put("/admin/documents/{doc_id}")
-async def update_document(doc_id: str, doc: AdminDocument):
+async def update_document(doc_id: str, doc: AdminDocument, process: bool = False):
     retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
@@ -262,25 +303,39 @@ async def update_document(doc_id: str, doc: AdminDocument):
     if not existing:
          raise HTTPException(status_code=404, detail="Document not found")
          
-    # Create updated document. Preserve 'manual' type or update it.
+    final_content = doc.content
+    final_metadata = {
+        "source_url": doc.source_url,
+        "title": doc.title,
+        "content_type": existing.metadata.get("content_type", "manual")
+    }
+
+    if process:
+        processed = rag_processor.process_document(doc.content, doc.source_url)
+        if processed:
+            final_content = processed["content"]
+            final_metadata.update(processed["metadata"])
+            final_metadata["content_type"] = "processed_manual"
+        else:
+             print("Warning: LLM processing failed or filtered content. Using original.")
+
     new_doc = Document(
-        page_content=doc.content,
-        metadata={
-            "source_url": doc.source_url,
-            "title": doc.title,
-            "content_type": existing.metadata.get("content_type", "manual") 
-        }
+        page_content=final_content,
+        metadata=final_metadata
     )
     
-    # In ParentDocumentRetriever, add_documents with same ID should obey the docstore update 
-    # but the vector store part might duplicate child chunks if IDs aren't managed perfectly.
-    # To be safe, we might ideally remove and read, but add_documents typically handles overwrites in KV store.
-    # For vector store, it adds new chunks. Old chunks might remain as ghosts unless we delete first.
-    
-    # 1. Delete old (best effort)
+    # Clean up old chunks from vectorstore
+    try:
+        # ParentDocumentRetriever stores the parent ID in child chunks metadata using id_key
+        id_key = getattr(retriever, "id_key", "doc_id")
+        retriever.vectorstore.delete(where={id_key: doc_id})
+    except Exception as e:
+        print(f"Warning: Failed to cleanup vectorstore chunks for {doc_id}: {e}")
+
+    # Delete old parent doc
     store.mdelete([doc_id]) 
     
-    # 2. Add new
+    # Add new (stores parent and adds new child chunks)
     retriever.add_documents([new_doc], ids=[doc_id])
     
     return {"status": "success", "message": "Document updated"}
@@ -292,13 +347,16 @@ async def delete_document(doc_id: str):
         raise HTTPException(status_code=500, detail="Retriever not initialized")
     
     store = retriever.docstore
+    
+    # Clean up chunks from vectorstore
+    try:
+        id_key = getattr(retriever, "id_key", "doc_id")
+        retriever.vectorstore.delete(where={id_key: doc_id})
+    except Exception as e:
+        print(f"Warning: Failed to cleanup vectorstore chunks for {doc_id}: {e}")
+
     # Delete from docstore
     store.mdelete([doc_id])
-    
-    # Note: Deleting from VectorStore is harder because ParentDocumentRetriever 
-    # doesn't expose a direct way to delete child chunks by parent ID easily 
-    # without deeper access. For now, removing from Parent Store effectively 
-    # breaks the retrieval link, or we can look into cleaning up orphans later.
     
     return {"status": "success", "message": "Document deleted"}
 
@@ -321,7 +379,6 @@ async def chat_endpoint(request: ChatRequest):
         chat_generator(request.message, request.session_id), 
         media_type="application/x-ndjson"
     )
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
