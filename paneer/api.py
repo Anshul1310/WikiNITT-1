@@ -14,6 +14,18 @@ import pymupdf4llm
 from utils import RagProcessor
 from dotenv import load_dotenv
 
+import redis
+import pickle
+
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=False)
+
+class QueueStatus(BaseModel):
+    queue_size: int
+    processed_count: int
+    scheduled_count: int
+    queued_urls: list[str]
+
+
 load_dotenv()
 
 # Data Models
@@ -501,6 +513,103 @@ async def chat_endpoint(request: ChatRequest):
         chat_generator(request.message, request.session_id), 
         media_type="application/x-ndjson"
     )
+
+@app.get("/admin/redis/queue")
+async def get_redis_queue_status():
+    try:
+        spider_name = "nitt"
+        # Redis keys are bytes or strings. If client is binary, we can pass strings, they get encoded.
+        queue_key = f"{spider_name}:requests"
+        dupefilter_key = f"{spider_name}:dupefilter"
+        start_urls_key = f"{spider_name}:start_urls"
+        
+        # Check type of queue to get size correctly
+        # redis_client.type returns bytes e.g. b'zset'
+        queue_type = redis_client.type(queue_key)
+        queue_size = 0
+        queued_urls = []
+        
+        raw_items = []
+        
+        if queue_type == b"zset":
+            queue_size = redis_client.zcard(queue_key)
+            # Fetch top 50. Scrapy-Redis PriorityQueue (zset) usually orders by priority (score).
+            raw_items = redis_client.zrange(queue_key, 0, 49)
+            
+        elif queue_type == b"list":
+            queue_size = redis_client.llen(queue_key)
+            raw_items = redis_client.lrange(queue_key, 0, 49)
+        
+        processed_count = redis_client.scard(dupefilter_key)
+        
+        # Scheduled count (Start URLs waiting to be ingested)
+        scheduled_count = redis_client.llen(start_urls_key)
+        
+        # Deserialize
+        for item in raw_items:
+            try:
+                obj = pickle.loads(item)
+                # Scrapy request objects or dicts. 
+                # Our debug script showed they are dicts: {'url': '...', ...}
+                if isinstance(obj, dict) and 'url' in obj:
+                    queued_urls.append(obj['url'])
+                elif hasattr(obj, 'url'):
+                    queued_urls.append(obj.url)
+                else:
+                    queued_urls.append(str(obj)) 
+            except Exception:
+                # Fallback if not pickle or decode error
+                try:
+                    queued_urls.append(item.decode('utf-8', errors='ignore'))
+                except:
+                    queued_urls.append(str(item))
+
+        return {
+            "queue_size": queue_size,
+            "processed_count": processed_count,
+            "scheduled_count": scheduled_count,
+            "queued_urls": queued_urls
+        }
+
+    except Exception as e:
+        print(f"Redis Error: {e}")
+        return {
+            "queue_size": 0,
+            "processed_count": 0,
+            "scheduled_count": 0,
+            "queued_urls": []
+        }
+
+@app.delete("/admin/redis/queue")
+async def flush_redis_queue():
+    try:
+        spider_name = "nitt"
+        keys = [
+            f"{spider_name}:requests",
+            f"{spider_name}:dupefilter",
+            f"{spider_name}:start_urls"
+        ]
+        redis_client.delete(*keys)
+        return {"status": "success", "message": "Redis queue flushed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to flush Redis: {e}")
+
+class AddUrlRequest(BaseModel):
+    url: str
+
+@app.post("/admin/redis/queue")
+async def add_url_to_queue(request: AddUrlRequest):
+    try:
+        spider_name = "nitt"
+        start_urls_key = f"{spider_name}:start_urls"
+        
+        # We push to start_urls. Scrapy-Redis spiders automatically pop from here.
+        # Format: Just the URL string.
+        redis_client.lpush(start_urls_key, request.url)
+        
+        return {"status": "success", "message": f"Added {request.url} to queue"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add URL: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

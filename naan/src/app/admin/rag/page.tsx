@@ -2,9 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import AddDocumentForm from './components/AddDocumentForm';
 import EditDocumentModal from './components/EditDocumentModal';
+import RedisQueueViewer from './components/RedisQueueViewer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ... interfaces
 interface AdminDocument {
@@ -170,135 +172,148 @@ export default function RagAdminPage() {
                 </div>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex gap-4 items-center w-full">
-                    <div className="relative w-72">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input
-                            placeholder="Search documents..."
-                            className="pl-8"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
+            <Tabs defaultValue="documents" className="w-full">
+                <TabsList className="mb-6">
+                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                    <TabsTrigger value="queue">Live Queue</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="documents">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex gap-4 items-center w-full">
+                            <div className="relative w-72">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Search documents..."
+                                    className="pl-8"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            {selectedIds.size > 0 && (
+                                <Button
+                                    onClick={handleBulkDelete}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                    Delete Selected ({selectedIds.size})
+                                </Button>
+                            )}
+                        </div>
+                        <AddDocumentForm onAdd={() => fetchDocuments(page)} />
                     </div>
-                    {selectedIds.size > 0 && (
-                        <Button
-                            onClick={handleBulkDelete}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                            Delete Selected ({selectedIds.size})
-                        </Button>
-                    )}
-                </div>
-                <AddDocumentForm onAdd={() => fetchDocuments(page)} />
-            </div>
 
-            <EditDocumentModal
-                document={editingDoc}
-                isOpen={isEditOpen}
-                onClose={() => setIsEditOpen(false)}
-                onUpdate={() => fetchDocuments(page)}
-            />
+                    <EditDocumentModal
+                        document={editingDoc}
+                        isOpen={isEditOpen}
+                        onClose={() => setIsEditOpen(false)}
+                        onUpdate={() => fetchDocuments(page)}
+                    />
 
-            <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-gray-600">
-                        <thead className="bg-gray-50 text-xs uppercase font-medium text-gray-500">
-                            <tr>
-                                <th className="px-6 py-3 w-4">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        checked={documents.length > 0 && selectedIds.size === documents.length}
-                                        onChange={toggleSelectAll}
-                                    />
-                                </th>
-                                <th className="px-6 py-3">Title</th>
-                                <th className="px-6 py-3">Source URL</th>
-                                <th className="px-6 py-3">Type</th>
-                                <th className="px-6 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center">Loading documents...</td>
-                                </tr>
-                            ) : documents.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center">No documents found.</td>
-                                </tr>
-                            ) : (
-                                documents.map((doc) => (
-                                    <tr key={doc.id} className={`hover:bg-gray-50 ${selectedIds.has(doc.id) ? 'bg-blue-50' : ''}`}>
-                                        <td className="px-6 py-4">
+                    <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-gray-600">
+                                <thead className="bg-gray-50 text-xs uppercase font-medium text-gray-500">
+                                    <tr>
+                                        <th className="px-6 py-3 w-4">
                                             <input
                                                 type="checkbox"
                                                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                checked={selectedIds.has(doc.id)}
-                                                onChange={() => toggleSelectOne(doc.id)}
+                                                checked={documents.length > 0 && selectedIds.size === documents.length}
+                                                onChange={toggleSelectAll}
                                             />
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate" title={doc.title}>
-                                            {doc.title || 'Untitled'}
-                                        </td>
-                                        <td className="px-6 py-4 max-w-xs truncate">
-                                            <a href={doc.source_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-                                                {doc.source_url}
-                                            </a>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.type === 'manual' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {doc.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
-                                            <button
-                                                onClick={() => handleEdit(doc)}
-                                                className="text-blue-600 hover:text-blue-900 font-medium"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(doc.id)}
-                                                className="text-red-600 hover:text-red-900 font-medium"
-                                            >
-                                                Delete
-                                            </button>
-                                        </td>
+                                        </th>
+                                        <th className="px-6 py-3">Title</th>
+                                        <th className="px-6 py-3">Source URL</th>
+                                        <th className="px-6 py-3">Type</th>
+                                        <th className="px-6 py-3 text-right">Actions</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center">Loading documents...</td>
+                                        </tr>
+                                    ) : documents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center">No documents found.</td>
+                                        </tr>
+                                    ) : (
+                                        documents.map((doc) => (
+                                            <tr key={doc.id} className={`hover:bg-gray-50 ${selectedIds.has(doc.id) ? 'bg-blue-50' : ''}`}>
+                                                <td className="px-6 py-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={selectedIds.has(doc.id)}
+                                                        onChange={() => toggleSelectOne(doc.id)}
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate" title={doc.title}>
+                                                    {doc.title || 'Untitled'}
+                                                </td>
+                                                <td className="px-6 py-4 max-w-xs truncate">
+                                                    <a href={doc.source_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                                                        {doc.source_url}
+                                                    </a>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.type === 'manual' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {doc.type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right flex justify-end gap-3">
+                                                    <button
+                                                        onClick={() => handleEdit(doc)}
+                                                        className="text-blue-600 hover:text-blue-900 font-medium"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(doc.id)}
+                                                        className="text-red-600 hover:text-red-900 font-medium"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
 
-                {/* Pagination Controls */}
-                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                    <span className="text-sm text-gray-700">
-                        Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
-                    </span>
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1 || loading}
-                            variant="outline"
-                            className="h-8 px-3"
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages || loading}
-                            variant="outline"
-                            className="h-8 px-3"
-                        >
-                            Next
-                        </Button>
+                        {/* Pagination Controls */}
+                        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                            <span className="text-sm text-gray-700">
+                                Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1 || loading}
+                                    variant="outline"
+                                    className="h-8 px-3"
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages || loading}
+                                    variant="outline"
+                                    className="h-8 px-3"
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </TabsContent>
+
+                <TabsContent value="queue">
+                    <RedisQueueViewer />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

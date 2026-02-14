@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import LogoIcon from "@/components/logo.svg";
-import { Users, BookOpen, LogOut, ChevronRight, MapPin } from "lucide-react";
+import { Users, BookOpen, LogOut, ChevronRight, MapPin, Database } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
 export default function AdminSidebar() {
@@ -35,6 +35,7 @@ export default function AdminSidebar() {
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Articles", href: "/admin/articles", icon: BookOpen },
     { name: "Maps", href: "/admin/map", icon: MapPin },
+    { name: "RAG", href: "/admin/rag", icon: Database },
   ];
 
   return (
@@ -61,18 +62,16 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                isActive
+              className={`group flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
                   ? "bg-blue-50 text-blue-600"
                   : "text-gray-900 hover:bg-gray-100"
-              }`}
+                }`}
             >
               <item.icon
-                className={`mr-3 h-5 w-5 transition-colors ${
-                  isActive
+                className={`mr-3 h-5 w-5 transition-colors ${isActive
                     ? "text-blue-600"
                     : "text-gray-500 group-hover:text-gray-900"
-                }`}
+                  }`}
               />
               <span className="flex-1">{item.name}</span>
               {isActive && <ChevronRight className="w-4 h-4" />}
