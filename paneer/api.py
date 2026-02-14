@@ -45,7 +45,11 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str
 
-app = FastAPI()
+ENVIRONMENT = os.getenv("ENV", "development")
+
+app = FastAPI(
+    root_path="/chat" if ENVIRONMENT == "production" else ""
+)
 
 app.add_middleware(
     CORSMiddleware,

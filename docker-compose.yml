@@ -45,6 +45,7 @@ services:
     volumes:
       - ./paneer:/app
     environment:
+      - ENV=production
       - POSTGRES_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/nitt_rag_store
       - CHROMA_HOST=chroma
       - CHROMA_PORT=8000
