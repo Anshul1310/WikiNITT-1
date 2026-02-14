@@ -33,6 +33,10 @@ export default function RagAdminPage() {
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
+
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
     // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -52,6 +56,8 @@ export default function RagAdminPage() {
             setDocuments(data.items);
             setTotalPages(data.pages);
             setPage(data.page);
+            // Clear selection when changing pages or fetching new data if desired, 
+            // or keep it. For now, let's keep it but formatted to valid IDs.
         } catch (err) {
             console.error(err);
             alert('Failed to load documents');
@@ -72,9 +78,58 @@ export default function RagAdminPage() {
             });
             if (!res.ok) throw new Error('Failed to delete');
             fetchDocuments(page);
+
+            // Remove from selection if present
+            const newSelected = new Set(selectedIds);
+            if (newSelected.has(id)) {
+                newSelected.delete(id);
+                setSelectedIds(newSelected);
+            }
         } catch (err) {
             alert('Error deleting document: ' + err);
         }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Are you sure you want to delete ${selectedIds.size} documents?`)) return;
+
+        try {
+            const res = await fetch('http://localhost:8000/admin/documents/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(selectedIds) })
+            });
+
+            if (!res.ok) throw new Error('Failed to bulk delete');
+
+            // Clear selection
+            setSelectedIds(new Set());
+            fetchDocuments(page);
+            alert('Documents deleted successfully');
+        } catch (err) {
+            console.error(err);
+            alert('Error deleting documents: ' + err);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === documents.length && documents.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            const allIds = new Set(documents.map(d => d.id));
+            setSelectedIds(allIds);
+        }
+    };
+
+    const toggleSelectOne = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
     };
 
     const handleEdit = (doc: AdminDocument) => {
@@ -116,19 +171,27 @@ export default function RagAdminPage() {
             </div>
 
             <div className="flex justify-between items-center mb-6">
-                <div className="relative w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Search documents..."
-                        className="pl-8"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="flex gap-4 items-center w-full">
+                    <div className="relative w-72">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                            placeholder="Search documents..."
+                            className="pl-8"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    {selectedIds.size > 0 && (
+                        <Button
+                            onClick={handleBulkDelete}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Delete Selected ({selectedIds.size})
+                        </Button>
+                    )}
                 </div>
                 <AddDocumentForm onAdd={() => fetchDocuments(page)} />
             </div>
-
-
 
             <EditDocumentModal
                 document={editingDoc}
@@ -142,6 +205,14 @@ export default function RagAdminPage() {
                     <table className="w-full text-left text-sm text-gray-600">
                         <thead className="bg-gray-50 text-xs uppercase font-medium text-gray-500">
                             <tr>
+                                <th className="px-6 py-3 w-4">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        checked={documents.length > 0 && selectedIds.size === documents.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
                                 <th className="px-6 py-3">Title</th>
                                 <th className="px-6 py-3">Source URL</th>
                                 <th className="px-6 py-3">Type</th>
@@ -151,15 +222,23 @@ export default function RagAdminPage() {
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center">Loading documents...</td>
+                                    <td colSpan={5} className="px-6 py-8 text-center">Loading documents...</td>
                                 </tr>
                             ) : documents.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center">No documents found.</td>
+                                    <td colSpan={5} className="px-6 py-8 text-center">No documents found.</td>
                                 </tr>
                             ) : (
                                 documents.map((doc) => (
-                                    <tr key={doc.id} className="hover:bg-gray-50">
+                                    <tr key={doc.id} className={`hover:bg-gray-50 ${selectedIds.has(doc.id) ? 'bg-blue-50' : ''}`}>
+                                        <td className="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                checked={selectedIds.has(doc.id)}
+                                                onChange={() => toggleSelectOne(doc.id)}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4 font-medium text-gray-900 max-w-xs truncate" title={doc.title}>
                                             {doc.title || 'Untitled'}
                                         </td>

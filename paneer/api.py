@@ -441,6 +441,47 @@ async def delete_document(doc_id: str):
     
     return {"status": "success", "message": "Document deleted"}
 
+class DeleteDocumentsRequest(BaseModel):
+    ids: list[str]
+
+@app.post("/admin/documents/delete")
+async def delete_documents(request: DeleteDocumentsRequest):
+    retriever = get_retriever()
+    if not retriever:
+        raise HTTPException(status_code=500, detail="Retriever not initialized")
+    
+    store = retriever.docstore
+    ids_to_delete = request.ids
+    
+    if not ids_to_delete:
+         return {"status": "success", "message": "No documents to delete"}
+
+    # 1. Clean up chunks from vectorstore for ALL docs
+    try:
+        id_key = getattr(retriever, "id_key", "doc_id")
+        # Most vectorstores support delete by filter/list. 
+        # For simplicity in this specific setup, we iterate. 
+        # Optimization: verify if vectorstore.delete supports 'id_in' or similar if needed.
+        # But 'where' usually implies single match or specific filter logic depending on backend.
+        # Chroma/PGVector often support list of IDs for delete directly if passed as ids argument, 
+        # but here we are deleting by *metadata* ID (the parent ID).
+        
+        # Iterating might be slow for huge batches, but safe for now.
+        for doc_id in ids_to_delete:
+             retriever.vectorstore.delete(where={id_key: doc_id})
+             
+    except Exception as e:
+        print(f"Warning: Failed to cleanup vectorstore chunks during bulk delete: {e}")
+
+    # 2. Delete from docstore (key-value store usually supports batch)
+    try:
+        store.mdelete(ids_to_delete)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Docstore delete failed: {e}")
+    
+    return {"status": "success", "message": f"Deleted {len(ids_to_delete)} documents"}
+
+
 @app.post("/admin/crawl")
 async def trigger_crawl(request: CrawlRequest):
     import subprocess
