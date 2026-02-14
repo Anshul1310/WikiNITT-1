@@ -31,7 +31,7 @@ services:
       - "7700:7700"
     volumes:
       - meili-data:/meili_data
-      ./dumps:/meili_data/dumps
+      - ./dumps:/meili_data/dumps
     restart: unless-stopped
     networks:
       - wikinitt-network
