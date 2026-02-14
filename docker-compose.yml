@@ -16,6 +16,7 @@ services:
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
       - JWT_SECRET=${JWT_SECRET}
+      - MEILI_IMPORT_DUMP=${MEILI_IMPORT_DUMP}
     depends_on:
       - meilisearch
     networks:
@@ -29,7 +30,8 @@ services:
     ports:
       - "7700:7700"
     volumes:
-      - meili-data:/data
+      - meili-data:/meili_data
+      ./dumps:/meili_data/dumps
     restart: unless-stopped
     networks:
       - wikinitt-network

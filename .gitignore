@@ -11,3 +11,4 @@ nitt_pdfs
 __pycache__
 crawls/
 nitt_parent_store/
+dumps/
