@@ -25,12 +25,12 @@ export default function LandingNavbar() {
                     </li>
                     <li>
                         <Link href="/articles" className="text-[#888] text-[0.95rem] font-medium transition-colors hover:text-[#3b28cc]">
-                            About us
+                            Articles
                         </Link>
                     </li>
                     <li>
                         <Link href="/c" className="text-[#888] text-[0.95rem] font-medium transition-colors hover:text-[#3b28cc]">
-                            Contact us
+                            Community
                         </Link>
                     </li>
                 </ul>

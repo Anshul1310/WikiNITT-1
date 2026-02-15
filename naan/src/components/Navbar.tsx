@@ -172,10 +172,10 @@ if (isArticleDetail) {
                   Homepage
                 </Link>
                 <Link href="/articles" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">
-                  About us
+                  Articles
                 </Link>
                 <Link href="/c" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">
-                  Contacts
+                  Community
                 </Link>
               </div>
 
@@ -210,10 +210,10 @@ if (isArticleDetail) {
                   Homepage
                 </Link>
                 <Link href="/articles" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white" onClick={() => setIsArticleMenuOpen(false)}>
-                  About us
+                  Articles
                 </Link>
                 <Link href="/c" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white" onClick={() => setIsArticleMenuOpen(false)}>
-                  Contacts
+                  Community
                 </Link>
               </div>
             </div>
