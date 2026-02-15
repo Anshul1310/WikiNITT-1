@@ -63,6 +63,8 @@ except Exception as e:
     print(f"Failed to connect to MongoDB: {e}")
     users_collection = None
 
+retriever = get_retriever()
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -294,7 +296,6 @@ rag_processor = RagProcessor(GROQ_API_KEYS)
 
 @app.get("/admin/documents", dependencies=[Depends(get_admin_user)])
 async def list_documents(page: int = 1, limit: int = 20, search: str = None):
-    retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
     
@@ -384,7 +385,6 @@ async def parse_pdf(file: UploadFile = File(...)):
 
 @app.post("/admin/documents", dependencies=[Depends(get_admin_user)])
 async def add_document(doc: AdminDocument, process: bool = False):
-    retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
     
@@ -430,7 +430,6 @@ async def add_document(doc: AdminDocument, process: bool = False):
 
 @app.put("/admin/documents/{doc_id}", dependencies=[Depends(get_admin_user)])
 async def update_document(doc_id: str, doc: AdminDocument, process: bool = False):
-    retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
         
@@ -474,7 +473,6 @@ async def update_document(doc_id: str, doc: AdminDocument, process: bool = False
 
 @app.delete("/admin/documents/{doc_id}", dependencies=[Depends(get_admin_user)])
 async def delete_document(doc_id: str):
-    retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
     
@@ -495,7 +493,6 @@ class DeleteDocumentsRequest(BaseModel):
 
 @app.post("/admin/documents/delete", dependencies=[Depends(get_admin_user)])
 async def delete_documents(request: DeleteDocumentsRequest):
-    retriever = get_retriever()
     if not retriever:
         raise HTTPException(status_code=500, detail="Retriever not initialized")
     
