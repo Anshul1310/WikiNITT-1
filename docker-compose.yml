@@ -52,6 +52,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - GROQ_API_KEYS=${GROQ_API_KEYS}
+      - JWT_SECRET=${JWT_SECRET}
+      - MONGODB_URI=${MONGODB_URI}
     depends_on:
       - postgres
       - chroma
