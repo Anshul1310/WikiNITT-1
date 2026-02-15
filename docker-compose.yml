@@ -99,6 +99,7 @@ services:
     restart: unless-stopped
     environment:
       - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
       - ANONYMIZED_TELEMETRY=False
     volumes:
       - chroma_data_nitt:/chroma/chroma
