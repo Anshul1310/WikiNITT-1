@@ -1,350 +1,421 @@
-'use client';
+import Link from "next/link";
+import { LandingSearch } from "@/components/LandingSearch";
+import {
+  Calendar,
+  MessageCircle,
+  User,
+  MessageSquare
+} from "lucide-react";
+import LandingNavbar from "@/components/LandingNavbar";
+import { request } from "graphql-request";
+import { GET_ARTICLES } from "@/gql/queries";
+import { Query, Article } from "@/gql/graphql";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
-import { motion, AnimatePresence } from 'framer-motion';
-import styles from './chat.module.css';
-import { CHAT_ENDPOINT } from '@/lib/chat';
+// Add Next.js cache revalidation if you want fresh data automatically
+export const revalidate = 60; 
 
-const ArrowLeftIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.2em" width="1.2em">
-    <line x1="19" y1="12" x2="5" y2="12"></line>
-    <polyline points="12 19 5 12 12 5"></polyline>
-  </svg>
-);
-const SendIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.1em" width="1.1em">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-  </svg>
-);
-const SparkleIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1em" width="1em">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
-  </svg>
-);
-
-const POPULAR_QUESTIONS = [
-  "How to reach NIT Trichy?",
-  "Hostel admission procedure?",
-  "Departments and courses?",
-  "Mess menu details?",
-];
-
-interface Message {
-  id: string;
-  role: 'user' | 'bot';
-  content: string;
-  isTyping?: boolean;
-  status?: string;
-  isStreaming?: boolean;
-  thoughts?: string;
-  isThinking?: boolean;
+// Fetch all articles
+async function getArticles() {
+  const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+  try {
+    const data = await request<Query>(endpoint, GET_ARTICLES, { limit: 20, offset: 0 });
+    return data?.articles || [];
+  } catch (error) {
+    console.error("Failed to fetch articles:", error);
+    return [];
+  }
 }
 
-export default function ChatPage() {
-  const router = useRouter(); // Initialize Router
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+// Fetch featured articles specifically
+async function getFeaturedArticles() {
+  const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+  try {
+    const data = await request<Query>(endpoint, GET_ARTICLES, { featured: true });
+    return data?.articles || [];
+  } catch (error) {
+    console.error("Failed to fetch featured articles:", error);
+    return [];
+  }
+}
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+// Date formatter helper
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
 
-  const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => scrollToBottom(), [messages]);
+export default async function Home({ searchParams }: { searchParams: { cat?: string } }) {
+  const categoryParam = searchParams.cat;
 
-  const [sessionId, setSessionId] = useState<string>('');
+  // Run both queries in parallel
+  const [allArticles, featuredData] = await Promise.all([
+    getArticles(),
+    getFeaturedArticles()
+  ]);
 
-  useEffect(() => {
-    let storedSessionId = sessionStorage.getItem('wikinitt_session_id');
-    if (!storedSessionId) {
-      storedSessionId = crypto.randomUUID();
-      sessionStorage.setItem('wikinitt_session_id', storedSessionId);
-    }
-    setSessionId(storedSessionId);
-  }, []);
+  // Extract unique categories dynamically from the DB results
+  const dynamicCategories = Array.from(new Set(allArticles.map(a => a?.category).filter(Boolean))) as string[];
+  const categories = ["All Categories", ...dynamicCategories];
 
-  const handleSend = async (textOverride?: string) => {
-    const textToSend = textOverride || input;
-    if (!textToSend.trim()) return;
+  // Pick the featured article (fallback to the latest article if no featured ones exist)
+  const featuredArticle = featuredData.length > 0 ? featuredData[0] : allArticles[0];
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: textToSend };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-
-    const botMsgId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, {
-      id: botMsgId,
-      role: 'bot',
-      content: '',
-      isTyping: false,
-      isStreaming: true,
-      thoughts: ''
-    }]);
-
-    try {
-      const response = await fetch(`${CHAT_ENDPOINT}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          session_id: sessionId
-        })
-      });
-
-      if (!response.ok) throw new Error('Network response was not ok');
-      if (!response.body) throw new Error('No response body');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last partial line in 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const data = JSON.parse(line);
-
-            if (data.type === 'status') {
-              setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                  ? { ...msg, status: data.content }
-                  : msg
-              ));
-            } else if (data.type === 'thought_chunk') {
-              setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                  ? {
-                    ...msg,
-                    thoughts: (msg.thoughts || '') + data.content,
-                    isThinking: true
-                  }
-                  : msg
-              ));
-            } else if (data.type === 'text_chunk') {
-              // Append chunk to content
-              setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                  ? {
-                    ...msg,
-                    content: (msg.content || '') + data.content,
-                    status: undefined,
-                    isThinking: false
-                  }
-                  : msg
-              ));
-            } else if (data.type === 'text') {
-              // Legacy/Full text replacement (fallback)
-              setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                  ? { ...msg, content: data.content, status: undefined, isThinking: false }
-                  : msg
-              ));
-            } else if (data.type === 'error') {
-              setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                  ? { ...msg, content: `Error: ${data.content}` }
-                  : msg
-              ));
-            }
-          } catch (e) {
-            console.error("Error parsing stream line:", line, e);
-          }
-        }
-      }
-
-      // Stream finished
-      setMessages(prev => prev.map(msg =>
-        msg.id === botMsgId
-          ? { ...msg, isStreaming: false, isThinking: false }
-          : msg
-      ));
-
-    } catch (error) {
-      console.error("Chat Error:", error);
-      setMessages(prev => prev.map(msg =>
-        msg.id === botMsgId
-          ? { ...msg, content: "Sorry, connection failed.", isStreaming: false }
-          : msg
-      ));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  // Filter the list by the selected category (from the URL)
+  let displayedArticles = categoryParam && categoryParam !== "All Categories" 
+    ? allArticles.filter(a => a?.category === categoryParam) 
+    : allArticles;
+  
+  // Exclude the featured article from the list and limit to exactly 3 items
+  const recentArticles = displayedArticles
+    .filter(a => a?.id !== featuredArticle?.id)
+    .slice(0, 3);
 
   return (
-    <div className={styles.container}>
-      {/* Background Mesh */}
-      <div className={styles.backgroundWrapper}>
-        <div className={styles.blobBlue}></div>
-        <div className={styles.blobIndigo}></div>
-        <div className={styles.noiseOverlay}></div>
-      </div>
+    <div className="relative min-h-screen overflow-x-hidden font-[Manrope,sans-serif] bg-[#fdfcff] text-[#1a1a1a]">
+      
+      {/* Background Ambient Blobs */}
+      <div className="ambient-blob top-blob"></div>
+      <div className="ambient-blob bottom-blob"></div>
 
-      {/* Main Chat Area */}
-      <div className={styles.main}>
+      <LandingNavbar />
 
-        {/* Header with Back Button */}
-        <div className={styles.header}>
-          <div className={styles.headerLeft}>
-            <button className={styles.backBtn} onClick={() => router.back()} title="Go Back">
-              <ArrowLeftIcon />
-            </button>
-            <div className={styles.headerTitle}>
-              <span style={{ color: '#4f46e5' }}>●</span> NITT Assistant
-            </div>
+      <main className="w-full max-w-[1200px] mx-auto px-5 pb-[60px] flex flex-col gap-[60px]">
+        
+        {/* --- Hero Section (The Glass Box) --- */}
+        <section className="hero-box">
+          <span className="tag-pill animate-up delay-1">Digital Campus Hub</span>
+          <h1 className="hero-title animate-up delay-2">
+            Explore the <span>Pulse</span> of<br />NITT
+          </h1>
+          
+          <div className="animate-up delay-3 w-full max-w-[600px] mt-6 relative z-20">
+            <LandingSearch />
           </div>
+        </section>
 
-          {messages.length > 0 && (
-            <button className={styles.newChatBtn} onClick={() => setMessages([])}>
-              <span style={{ marginRight: '6px' }}>+</span> New Chat
-            </button>
-          )}
-        </div>
-
-        <div className={styles.chatScrollArea}>
-          <AnimatePresence mode="wait">
-            {messages.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={styles.emptyStateContainer}
-                key="empty"
+        {/* --- Dynamic Categories --- */}
+        <section className="flex justify-center gap-3 flex-wrap animate-up delay-3">
+          {categories.map((cat) => {
+            const isActive = categoryParam === cat || (!categoryParam && cat === "All Categories");
+            return (
+              <Link 
+                key={cat} 
+                href={cat === "All Categories" ? "/" : `/?cat=${encodeURIComponent(cat)}`}
+                className={`cat-btn ${isActive ? "active" : ""}`}
               >
-                <div className={styles.logoWrapper}>
-                  <div className={styles.logoText}>N</div>
+                {cat}
+              </Link>
+            );
+          })}
+        </section>
+
+        {/* --- Featured Article --- */}
+        {featuredArticle && (
+          <section className="flex justify-center mt-5">
+            <Link href={`/articles/${featuredArticle.slug}`} className="featured-card group cursor-pointer block">
+              <span className="floating-tag">Featured</span>
+              <img 
+                src={featuredArticle.thumbnail || "/images/placeholder.png"} 
+                alt={featuredArticle.title} 
+              />
+              <div className="featured-content">
+                <h2>{featuredArticle.title}</h2>
+                <p className="line-clamp-2">{featuredArticle.description || "Read more about this story in the WikiNITT hub..."}</p>
+                <div className="meta-tags">
+                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {formatDate(featuredArticle.createdAt)}</span>
+                  {/* Note: If comment count is stored in DB, map it here. Defaulting to 0 for now. */}
+                  <span className="flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Join Discussion</span>
+                  <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {featuredArticle.author?.name || "Contributor"}</span>
                 </div>
-                <h1 className={styles.welcomeHeadline}>Hello, Student</h1>
-                <p className={styles.welcomeSub}>How can I help you with NIT Trichy today?</p>
-
-                {/* MOST POPULAR QUESTIONS GRID */}
-                <div className={styles.suggestionsGrid}>
-                  {POPULAR_QUESTIONS.map((q, i) => (
-                    <button key={i} className={styles.suggestionCard} onClick={() => handleSend(q)}>
-                      <div className={styles.cardIcon}><SparkleIcon /></div>
-                      <span className={styles.cardText}>{q}</span>
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            ) : (
-              <div key="chat">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`${styles.messageRow} ${msg.role === 'bot' ? styles.botRow : ''}`}>
-                    <div className={`${styles.messageContent} ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                      {msg.role === 'bot' && (
-                        <div className={`${styles.avatar} ${styles.botAvatar}`}>AI</div>
-                      )}
-
-                      <div className={`${styles.bubble} ${msg.role === 'user' ? styles.userBubble : styles.botBubble}`}>
-
-                        {/* Thinking Block */}
-                        {msg.thoughts && (
-                          <div className={styles.thinkingBlock}>
-                            <div className={styles.thinkingHeader}>
-                              <SparkleIcon />
-                              <span>Thinking Process</span>
-                              {msg.isThinking && <span className={styles.pulsingDot}></span>}
-                            </div>
-                            <div className={styles.thinkingContent}>
-                              {msg.thoughts}
-                            </div>
-                          </div>
-                        )}
-
-                        {msg.isTyping ? (
-                          <Typewriter
-                            text={msg.content}
-                            onComplete={() => {
-                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, isTyping: false } : m));
-                            }}
-                          />
-                        ) : (
-                          <div className="whitespace-pre-wrap relative">
-                            {msg.content}
-                            {msg.isStreaming && !msg.isThinking && (
-                              <span className={styles.cursor}></span>
-                            )}
-                            {msg.status && (
-                              <div className="mt-2 text-xs text-indigo-200 italic flex items-center gap-1">
-                                <SparkleIcon /> {msg.status}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {msg.role === 'user' && (
-                        <div className={`${styles.avatar} ${styles.userAvatar}`}>You</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div ref={bottomRef} style={{ height: '1px' }} />
               </div>
-            )}
-          </AnimatePresence>
-        </div>
+            </Link>
+          </section>
+        )}
 
-        {/* Input Area */}
-        <div className={styles.inputContainer}>
-          <div className={styles.inputBoxWrapper}>
-            <textarea
-              className={styles.textarea}
-              placeholder="Ask anything..."
-              rows={1}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              className={`${styles.sendButton} ${input.trim() ? styles.active : ''}`}
-              onClick={() => handleSend()}
-            >
-              <SendIcon />
-            </button>
-          </div>
-          <div className={styles.disclaimer}>
-            AI can make mistakes. Verify important info.
-          </div>
-        </div>
-      </div>
+        {/* --- 3 Article List --- */}
+        <section className="flex flex-col gap-10 max-w-[650px] mx-auto w-full">
+          {recentArticles.length > 0 ? (
+            recentArticles.map((article) => (
+              <Link key={article.id} href={`/articles/${article.slug}`} className="article-item group cursor-pointer block">
+                <div className="flex flex-col md:flex-row gap-[20px] md:gap-[30px] items-start w-full">
+                  <img src={article.thumbnail || "/images/placeholder.png"} alt={article.title} />
+                  <div className="article-text">
+                    <div className="date-line">
+                      <span>{formatDate(article.createdAt)}</span>
+                      <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {article.author?.name || "Contributor"}</span>
+                    </div>
+                    <h3 className="group-hover:text-[#3b28cc] transition-colors">{article.title}</h3>
+                    <p>{article.description || article.content?.substring(0, 150) + "..."}</p>
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="text-center text-[#666] py-10 font-medium">
+              No articles found for "{categoryParam}".
+            </div>
+          )}
+        </section>
+
+      </main>
+
+      {/* --- Floating Chat --- */}
+      <Link href="/chat" className="fixed bottom-10 right-10 bg-black text-white w-[60px] h-[60px] rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-[100] transition-transform duration-300 hover:scale-110 hover:rotate-6">
+        <MessageSquare className="w-6 h-6" />
+      </Link>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap');
+
+        :root {
+          --primary-blue: #3b28cc;
+        }
+
+        /* Ambient Blobs */
+        .ambient-blob {
+          position: absolute;
+          width: 60vw;
+          height: 60vh;
+          z-index: -1;
+        }
+        .top-blob {
+          top: -10%;
+          left: -10%;
+          background: radial-gradient(circle, rgba(169, 196, 255, 0.4) 0%, rgba(255,255,255,0) 70%);
+          animation: floatBlob 10s infinite alternate;
+        }
+        .bottom-blob {
+          top: 10%;
+          right: -10%;
+          background: radial-gradient(circle, rgba(245, 200, 255, 0.4) 0%, rgba(255,255,255,0) 70%);
+          animation: floatBlob 10s infinite alternate-reverse;
+        }
+
+        @keyframes floatBlob {
+          0% { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(20px, 40px) scale(1.1); }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+          100% { transform: translateY(0px); }
+        }
+
+        .animate-up {
+          animation: fadeInUp 0.8s ease-out forwards;
+          opacity: 0;
+        }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.3s; }
+        .delay-3 { animation-delay: 0.5s; }
+
+        /* Hero Box */
+        .hero-box {
+          width: 100%;
+          height: calc(100vh - 120px); 
+          min-height: 500px;
+          padding: 0 20px;
+          margin-top: 10px;
+          background: linear-gradient(125deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 245, 255, 0.4) 50%, rgba(255, 240, 250, 0.3) 100%);
+          backdrop-filter: blur(30px) saturate(120%);
+          -webkit-backdrop-filter: blur(30px) saturate(120%);
+          border: 1px solid rgba(255, 255, 255, 0.8);
+          border-radius: 40px;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05), inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 0 40px rgba(255, 255, 255, 0.8);
+          animation: float 6s ease-in-out infinite;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          position: relative;
+          overflow: visible; /* Allows search dropdown to overlap */
+        }
+
+        .tag-pill {
+          display: inline-block;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          color: var(--primary-blue);
+          padding: 8px 16px;
+          border-radius: 12px;
+          font-size: 0.7rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          margin-bottom: 30px;
+          box-shadow: 0 5px 15px rgba(59, 40, 204, 0.1);
+        }
+
+        .hero-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 4.5rem;
+          line-height: 1.1;
+          margin-bottom: 20px;
+          color: #050505;
+          letter-spacing: -1px;
+          text-shadow: 0 2px 10px rgba(255,255,255,0.8);
+        }
+        .hero-title span {
+          font-style: italic;
+          color: var(--primary-blue);
+          font-weight: 600;
+        }
+
+        /* Categories */
+        .cat-btn {
+          display: inline-flex;
+          align-items: center;
+          text-decoration: none;
+          padding: 10px 24px;
+          border-radius: 30px;
+          font-size: 0.9rem;
+          cursor: pointer;
+          font-weight: 600;
+          font-family: 'Playfair Display', serif;
+          letter-spacing: 0.5px;
+          transition: all 0.3s;
+        }
+        .cat-btn:not(.active) {
+          background-color: rgba(255,255,255,0.5);
+          border: 1px solid rgba(0,0,0,0.05);
+          color: #666;
+        }
+        .cat-btn:hover { transform: translateY(-2px); background: white; }
+        .cat-btn.active {
+          background-color: var(--primary-blue);
+          color: white;
+          box-shadow: 0 5px 15px rgba(59, 40, 204, 0.2);
+        }
+
+        /* Featured Card */
+        .featured-card {
+          position: relative;
+          width: 100%;
+          max-width: 650px;
+          height: 600px;
+          border-radius: 30px;
+          overflow: hidden;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+          transition: transform 0.4s ease;
+        }
+        .featured-card:hover { transform: translateY(-5px); }
+        .featured-card img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.8s ease;
+        }
+        .featured-card:hover img { transform: scale(1.05); }
+        .featured-content {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          padding: 40px;
+          background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+          color: white;
+        }
+        .featured-content h2 {
+          font-family: 'Playfair Display', serif;
+          font-size: 2.2rem;
+          font-weight: 500;
+          margin-bottom: 15px;
+          line-height: 1.2;
+        }
+        .featured-content p {
+          font-size: 0.95rem;
+          opacity: 0.9;
+          margin-bottom: 20px;
+          font-weight: 300;
+        }
+        .meta-tags {
+          display: flex;
+          gap: 20px;
+          font-size: 0.8rem;
+          opacity: 0.8;
+          font-weight: 500;
+          letter-spacing: 0.5px;
+        }
+        .floating-tag {
+          position: absolute;
+          top: 30px;
+          left: 30px;
+          background: white;
+          color: #333;
+          padding: 6px 16px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          z-index: 2;
+        }
+
+        /* Article List */
+        .article-item {
+          transition: transform 0.3s;
+        }
+        .article-item:hover { transform: translateX(10px); }
+        .article-item img {
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+          border-radius: 12px;
+        }
+        @media (min-width: 768px) {
+          .article-item img {
+            width: 180px;
+            height: 140px;
+          }
+        }
+        .article-text { flex: 1; padding-top: 5px; }
+        .date-line {
+          font-size: 0.75rem;
+          color: #888;
+          margin-bottom: 10px;
+          display: flex;
+          gap: 15px;
+          align-items: center;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .article-text h3 {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.6rem;
+          font-weight: 500;
+          color: #222;
+          margin-bottom: 12px;
+          line-height: 1.2;
+        }
+        .article-text p {
+          font-size: 0.95rem;
+          color: #666;
+          line-height: 1.6;
+          font-weight: 400;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+          .hero-title { font-size: 2.8rem; }
+          .hero-box { height: auto; min-height: 450px; padding: 60px 20px; }
+          .featured-card { height: 450px; }
+          .featured-content { padding: 30px 20px; }
+          .featured-content h2 { font-size: 1.8rem; }
+        }
+      `}</style>
     </div>
   );
 }
-
-// --- Helper Components ---
-const Typewriter = ({ text, onComplete }: { text: string, onComplete: () => void }) => {
-  const [display, setDisplay] = useState('');
-
-  useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      setDisplay(text.substring(0, i + 1));
-      i++;
-      if (i > text.length) {
-        clearInterval(interval);
-        onComplete();
-      }
-    }, 15);
-    return () => clearInterval(interval);
-  }, [text]);
-
-  return (
-    <span>
-      {display}
-      <span className={styles.cursor}></span>
-    </span>
-  );
-};
