@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { GraphQLClient } from "graphql-request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,10 +13,12 @@ import {
   UPLOAD_IMAGE_MUTATION,
 } from "@/gql/admin";
 import { useSession } from "next-auth/react";
-
 import { useRouter } from "next/navigation";
-import Editor from "@/components/Editor";
 import { CategorySelect } from "@/components/CategorySelect";
+
+// FIX 1: Dynamically import Editor to avoid SSR window reference issues
+import dynamic from "next/dynamic";
+const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
 
 interface Article {
   id: string;
@@ -45,6 +47,10 @@ export default function ArticlesPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  
+  // FIX 2: Add mounted state for hydration safe rendering
+  const [mounted, setMounted] = useState(false);
+
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
@@ -69,9 +75,13 @@ export default function ArticlesPage() {
 
   const thumbnail = watch("thumbnail");
 
+  // Effect to handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const getClient = () => {
     if (!session?.backendToken) {
-      
       return null;
     }
     return new GraphQLClient(process.env.NEXT_PUBLIC_GRAPHQL_API_URL!, {
@@ -79,7 +89,6 @@ export default function ArticlesPage() {
     });
   };
 
-  
   const { data: articlesData, isLoading } = useQuery({
     queryKey: ["articles"],
     queryFn: async () => {
@@ -92,7 +101,6 @@ export default function ArticlesPage() {
 
   const articles = articlesData?.articles || [];
 
-  
   const createMutation = useMutation({
     mutationFn: async (data: ArticleFormData) => {
       const client = getClient();
@@ -235,7 +243,6 @@ export default function ArticlesPage() {
         )}
       </div>
 
-      {}
       {isFormVisible && (
         <div className="mb-8 rounded-lg bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">
@@ -379,7 +386,6 @@ export default function ArticlesPage() {
         </div>
       )}
 
-      {}
       <div className="overflow-x-auto rounded-lg bg-white shadow">
         <table className="min-w-full leading-normal">
           <thead>
@@ -441,8 +447,11 @@ export default function ArticlesPage() {
                   </p>
                 </td>
                 <td className="border-b border-gray-200 bg-white px-5 py-5 text-sm">
+                  {/* FIX 3: Use mounted state to ensure date matches server/client */}
                   <p className="whitespace-no-wrap text-gray-900">
-                    {new Date(article.createdAt).toLocaleDateString()}
+                    {mounted
+                      ? new Date(article.createdAt).toLocaleDateString()
+                      : ""}
                   </p>
                 </td>
                 <td className="border-b border-gray-200 bg-white px-5 py-5 text-sm">

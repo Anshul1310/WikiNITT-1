@@ -1,14 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Heart,
   Mail,
   Globe,
+  Linkedin,
 } from "lucide-react";
 import LogoIcon from "@/components/logo.svg";
 
 export default function Footer() {
+  const pathname = usePathname();
+  const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
+
+  if (isArticleDetail) {
+    return (
+      <footer className="w-full mt-auto bg-[#ececf8] border-t border-[#d6d8e3]">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 py-8 text-sm text-[#5f6270] md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <span>© 2026 NITT. All rights reserved.</span>
+            <div className="flex items-center gap-3">
+              <Link href="#" className="hover:text-[#2f3035] transition-colors" aria-label="Instagram">
+                <Globe className="h-4 w-4" />
+              </Link>
+              <Link href="#" className="hover:text-[#2f3035] transition-colors" aria-label="LinkedIn">
+                <Linkedin className="h-4 w-4" />
+              </Link>
+              <Link href="#" className="hover:text-[#2f3035] transition-colors" aria-label="Mail">
+                <Mail className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+          <Link href="/c" className="text-[#2f3035] hover:underline underline-offset-4 flex items-center gap-2">
+            Contact Us
+            <span className="text-xs">▲</span>
+          </Link>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="w-full mt-auto bg-slate-50 border-t border-border-light pt-16 pb-8">
       <div className="layout-container flex justify-center">

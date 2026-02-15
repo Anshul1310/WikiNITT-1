@@ -15,8 +15,7 @@ import {
   Search,
   User,
   LogOut,
-  ChevronRight,
-  Loader2,
+  MapPin,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -29,6 +28,12 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+type CurrentUser = {
+  avatar?: string | null;
+  username: string;
+  displayName?: string | null;
+};
+
 // ... (UserMenu component remains the same as previous) ...
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,7 +45,7 @@ export function UserMenu() {
     queryFn: async () => {
       if (!session?.backendToken) return null;
       const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL!;
-      const data = await request<any>(
+      const data = await request<{ me: CurrentUser }>(
         endpoint,
         GET_ME,
         {},
@@ -133,18 +138,91 @@ export function UserMenu() {
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isArticleMenuOpen, setIsArticleMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const { status } = useSession();
 
   // === EXCLUSION LOGIC ===
   const isAdmin = pathname?.startsWith("/admin");
   const isChat = pathname === "/chat";
+  const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
   
   // If Admin, Chat, or Home page, render children ONLY (no navbar/sidebar)
   if (isAdmin || isChat || pathname === "/") {
     return <>{children}</>;
+  }
+
+  if (isArticleDetail) {
+    return (
+      <>
+        <nav className="fixed top-0 z-50 w-full bg-[#2f3035] border-b border-white/10">
+          <div className="mx-auto h-16 max-w-[1280px] px-4 sm:px-6">
+            <div className="flex h-full items-center justify-between">
+              <Link href="/" className="flex items-center">
+                <LogoIcon className="mr-2 h-8 w-8 rounded-md bg-white/10 p-1.5 fill-white" />
+                <span className="text-2xl font-light text-white">WikiNITT</span>
+              </Link>
+
+              <div className="hidden items-center gap-10 md:flex">
+                <Link href="/" className="text-sm text-white/80 hover:text-white transition-colors">
+                  Homepage
+                </Link>
+                <Link href="/articles" className="text-sm text-white/80 hover:text-white transition-colors">
+                  About us
+                </Link>
+                <Link href="/c" className="text-sm text-white/80 hover:text-white transition-colors">
+                  Contacts
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-3 sm:gap-4">
+                <MapPin className="h-4 w-4 text-white/70" />
+                {status === "unauthenticated" && (
+                  <button
+                    onClick={() => signIn("dauth")}
+                    className="rounded-sm bg-[#ece4d9] px-4 py-2 text-sm font-semibold text-[#2f3035] hover:bg-white transition-colors shadow-sm"
+                  >
+                    Login
+                  </button>
+                )}
+                {status === "authenticated" && <UserMenu />}
+
+                <button
+                  type="button"
+                  onClick={() => setIsArticleMenuOpen((prev) => !prev)}
+                  className="rounded-md p-2 text-white/80 hover:bg-white/10 hover:text-white transition-colors md:hidden"
+                  aria-label="Open navigation menu"
+                >
+                  {isArticleMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {isArticleMenuOpen && (
+            <div className="border-t border-white/10 bg-[#2f3035] px-4 py-3 md:hidden">
+              <div className="flex flex-col gap-3">
+                <Link href="/" className="text-sm text-white/80" onClick={() => setIsArticleMenuOpen(false)}>
+                  Homepage
+                </Link>
+                <Link href="/articles" className="text-sm text-white/80" onClick={() => setIsArticleMenuOpen(false)}>
+                  About us
+                </Link>
+                <Link href="/c" className="text-sm text-white/80" onClick={() => setIsArticleMenuOpen(false)}>
+                  Contacts
+                </Link>
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <main className="min-h-screen pt-16">
+          {children}
+        </main>
+        <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      </>
+    );
   }
 
   // ... (Rest of the component logic remains the same for other pages)
@@ -197,7 +275,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center">
-              <div className="flex items-center ms-3 relative" ref={profileRef}>
+              <div className="flex items-center ms-3 relative">
                 {status === "unauthenticated" && (
                   <button
                     onClick={() => signIn("dauth")}
