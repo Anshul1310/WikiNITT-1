@@ -10,8 +10,10 @@ interface FormattedDateProps {
 
 export default function FormattedDate({ date, className }: FormattedDateProps) {
   const [formattedDate, setFormattedDate] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     try {
       let dateObj: Date;
 
@@ -28,24 +30,24 @@ export default function FormattedDate({ date, className }: FormattedDateProps) {
       }
 
       // Check if date is valid
-      if (isNaN(dateObj.getTime())) {
-        return;
+      if (!isNaN(dateObj.getTime())) {
+        setFormattedDate(formatDistanceToNow(dateObj, { addSuffix: true }));
       }
-
-      setFormattedDate(formatDistanceToNow(dateObj, { addSuffix: true }));
     } catch (error) {
       console.error("Error formatting date:", error);
     }
   }, [date]);
 
-  if (!formattedDate) {
-    return null;
+  // Render a stable empty span during SSR and initial hydration to prevent mismatches
+  if (!mounted || !formattedDate) {
+    return <span className={className}></span>;
   }
 
   return (
     <span
       className={className}
       title={typeof date === "string" ? date : undefined}
+      suppressHydrationWarning
     >
       {formattedDate}
     </span>

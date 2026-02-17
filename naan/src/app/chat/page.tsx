@@ -6,24 +6,7 @@ import { useSession, signIn } from "next-auth/react";
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './chat.module.css';
 import { CHAT_ENDPOINT } from '@/lib/chat';
-
-const ArrowLeftIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.2em" width="1.2em">
-    <line x1="19" y1="12" x2="5" y2="12"></line>
-    <polyline points="12 19 5 12 12 5"></polyline>
-  </svg>
-);
-const SendIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1.1em" width="1.1em">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-  </svg>
-);
-const SparkleIcon = () => (
-  <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" height="1em" width="1em">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
-  </svg>
-);
+import { ArrowLeft, Send, Sparkles } from "lucide-react";
 
 const POPULAR_QUESTIONS = [
   "How to reach NIT Trichy?",
@@ -110,7 +93,7 @@ export default function ChatPage() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last partial line in 
+        buffer = lines.pop() || '';
         for (const line of lines) {
           if (!line.trim()) continue;
           try {
@@ -229,7 +212,7 @@ export default function ChatPage() {
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <button className={styles.backBtn} onClick={() => router.back()} title="Go Back">
-              <ArrowLeftIcon />
+              <ArrowLeft />
             </button>
             <div className={styles.headerTitle}>
               <span style={{ color: '#4f46e5' }}>●</span> NITT Assistant
@@ -263,7 +246,7 @@ export default function ChatPage() {
                 <div className={styles.suggestionsGrid}>
                   {POPULAR_QUESTIONS.map((q, i) => (
                     <button key={i} className={styles.suggestionCard} onClick={() => handleSend(q)}>
-                      <div className={styles.cardIcon}><SparkleIcon /></div>
+                      <div className={styles.cardIcon}><Sparkles /></div>
                       <span className={styles.cardText}>{q}</span>
                     </button>
                   ))}
@@ -284,7 +267,7 @@ export default function ChatPage() {
                         {msg.thoughts && (
                           <div className={styles.thinkingBlock}>
                             <div className={styles.thinkingHeader}>
-                              <SparkleIcon />
+                              <Sparkles />
                               <span>Thinking Process</span>
                               {msg.isThinking && <span className={styles.pulsingDot}></span>}
                             </div>
@@ -309,7 +292,7 @@ export default function ChatPage() {
                             )}
                             {msg.status && (
                               <div className="mt-2 text-xs text-indigo-200 italic flex items-center gap-1">
-                                <SparkleIcon /> {msg.status}
+                                <Sparkles /> {msg.status}
                               </div>
                             )}
                           </div>
@@ -343,7 +326,7 @@ export default function ChatPage() {
               className={`${styles.sendButton} ${input.trim() ? styles.active : ''}`}
               onClick={() => handleSend()}
             >
-              <SendIcon />
+              <Send />
             </button>
           </div>
           <div className={styles.disclaimer}>

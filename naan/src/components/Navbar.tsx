@@ -15,6 +15,7 @@ import {
   Search,
   User,
   LogOut,
+  MapPin,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -28,6 +29,13 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+type CurrentUser = {
+  avatar?: string | null;
+  username: string;
+  displayName?: string | null;
+};
+
+// ... (UserMenu component remains exactly the same) ...
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,7 +46,7 @@ export function UserMenu() {
     queryFn: async () => {
       if (!session?.backendToken) return null;
       const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL!;
-      const data = await request<any>(
+      const data = await request<{ me: CurrentUser }>(
         endpoint,
         GET_ME,
         {},
@@ -131,18 +139,90 @@ export function UserMenu() {
 
 export default function Navbar({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isArticleMenuOpen, setIsArticleMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false); // Add mounted state
   const pathname = usePathname();
   const { status } = useSession();
 
-  // === EXCLUSION LOGIC ===
+  // Ensure auth components only render after hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isAdmin = pathname?.startsWith("/admin");
   const isChat = pathname === "/chat";
+  const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
 
-  // If Admin, Chat, or Home page, render children ONLY (no navbar/sidebar)
   if (isAdmin || isChat || pathname === "/") {
     return <>{children}</>;
+  }
+
+  if (isArticleDetail) {
+    return (
+      <>
+        <nav className="fixed top-0 z-50 w-full bg-[#2d2d2d] transition-all duration-300">
+          <div className="w-full px-[5%] md:px-[8%] py-[15px]">
+            <div className="flex items-center justify-between">
+
+              <Link href="/" className="flex items-center group relative pb-1">
+                <span className="text-[1.2rem] font-bold tracking-[1px] text-white after:content-[''] after:absolute after:w-0 after:h-[2px] after:-bottom-1 after:left-0 after:bg-white after:transition-all after:duration-300 group-hover:after:w-full">
+                  WikiNITT
+                </span>
+              </Link>
+
+              <div className="hidden items-center gap-[30px] md:flex">
+                <Link href="/" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">
+                  Homepage
+                </Link>
+                <Link href="/articles" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">
+                  Articles
+                </Link>
+                <Link href="/c" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">
+                  Community
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-[15px] text-[0.8rem]">
+                <MapPin className="h-4 w-4 text-white" />
+
+                {/* Mounted check applied here */}
+                {mounted ? (
+                  <>
+                    {status === "unauthenticated" && (
+                      <button
+                        onClick={() => signIn("dauth")}
+                        className="rounded-[2px] bg-white px-[16px] py-[6px] text-[0.75rem] font-semibold text-[#2d2d2d] hover:bg-[#ddd] hover:-translate-y-[2px] hover:shadow-[0_4px_8px_rgba(255,255,255,0.2)] transition-all"
+                      >
+                        Login
+                      </button>
+                    )}
+                    {status === "authenticated" && <UserMenu />}
+                  </>
+                ) : (
+                  // Optional: Render a placeholder matching the size if needed, or nothing
+                  <div className="w-[60px] h-[28px]" />
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsArticleMenuOpen((prev) => !prev)}
+                  className="text-white md:hidden"
+                  aria-label="Open navigation menu"
+                >
+                  {isArticleMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* ... mobile menu code ... */}
+        </nav>
+        <main className="min-h-screen pt-[60px] bg-[#f3f3ff]">
+          {children}
+        </main>
+        <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      </>
+    );
   }
 
   const navItems = [
@@ -194,18 +274,24 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center">
-              <div className="flex items-center ms-3 relative" ref={profileRef}>
-                {status === "unauthenticated" && (
-                  <form action={googleLogin}>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all"
-                    >
-                      Login with Google
-                    </button>
-                  </form>
+              <div className="flex items-center ms-3 relative">
+                {/* Mounted check applied here too */}
+                {mounted ? (
+                  <>
+                    {status === "unauthenticated" && (
+                      <button
+                        onClick={() => signIn("dauth")}
+                        className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all"
+                      >
+                        Login
+                      </button>
+                    )}
+                    {status === "authenticated" && <UserMenu />}
+                  </>
+                ) : (
+                  // Placeholder for main nav
+                  <div className="w-[80px] h-[36px]" />
                 )}
-                {status === "authenticated" && <UserMenu />}
               </div>
             </div>
           </div>

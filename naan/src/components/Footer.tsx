@@ -1,14 +1,49 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Heart,
   Mail,
   Globe,
+  Linkedin,
 } from "lucide-react";
 import LogoIcon from "@/components/logo.svg";
 
 export default function Footer() {
+  const pathname = usePathname();
+  const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
+
+if (isArticleDetail) {
+    return (
+      <footer className="w-full mt-[60px] bg-[#f3f3ff] border-t border-[#ddd] px-[5%] md:px-[8%] py-[25px] flex flex-col md:flex-row justify-between items-center text-[0.75rem] text-[#777] gap-[20px] md:gap-0 font-[Inter,sans-serif]">
+        
+        <div className="flex flex-col md:flex-row items-center gap-[10px] md:gap-[20px]">
+          <div>© 2026 NITT. All rights reserved.</div>
+          <div className="flex gap-[15px] text-[1rem]">
+            <Link href="#" className="hover:text-[#2d2d2d] hover:-translate-y-[2px] transition-all cursor-pointer" aria-label="Website">
+              <Globe className="w-4 h-4" />
+            </Link>
+            <Link href="#" className="hover:text-[#2d2d2d] hover:-translate-y-[2px] transition-all cursor-pointer" aria-label="LinkedIn">
+              <Linkedin className="w-4 h-4" />
+            </Link>
+            <Link href="#" className="hover:text-[#2d2d2d] hover:-translate-y-[2px] transition-all cursor-pointer" aria-label="Mail">
+              <Mail className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+
+        <Link 
+          href="/c" 
+          className="flex items-center gap-[8px] cursor-pointer font-medium transition-colors hover:text-[#333] group"
+        >
+          Contact Us 
+          <span className="text-[10px] transition-transform duration-300 group-hover:-translate-y-1">▲</span>
+        </Link>
+      </footer>
+    );
+  }
+
   return (
     <footer className="w-full mt-auto bg-slate-50 border-t border-border-light pt-16 pb-8">
       <div className="layout-container flex justify-center">
