@@ -152,7 +152,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
   const isAdmin = pathname?.startsWith("/admin");
   const isChat = pathname === "/chat";
   const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
-  
+
   if (isAdmin || isChat || pathname === "/") {
     return <>{children}</>;
   }
@@ -163,7 +163,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
         <nav className="fixed top-0 z-50 w-full bg-[#2d2d2d] transition-all duration-300">
           <div className="w-full px-[5%] md:px-[8%] py-[15px]">
             <div className="flex items-center justify-between">
-              
+
               <Link href="/" className="flex items-center group relative pb-1">
                 <span className="text-[1.2rem] font-bold tracking-[1px] text-white after:content-[''] after:absolute after:w-0 after:h-[2px] after:-bottom-1 after:left-0 after:bg-white after:transition-all after:duration-300 group-hover:after:w-full">
                   WikiNITT
@@ -184,7 +184,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
 
               <div className="flex items-center gap-[15px] text-[0.8rem]">
                 <MapPin className="h-4 w-4 text-white" />
-                
+
                 {/* Mounted check applied here */}
                 {mounted ? (
                   <>
@@ -251,7 +251,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <Link href="/" className="flex ms-2 md:me-24 items-center group">
-                <LogoIcon className="h-8 w-8 mr-2 fill-white bg-gradient-to-br from-indigo-600 to-blue-600 rounded-lg p-1.5 shadow-md group-hover:scale-105 transition-transform" />
+                <LogoIcon className="h-8 w-8 mr-2 fill-white bg-linear-to-br from-indigo-600 to-blue-600 rounded-lg p-1.5 shadow-md group-hover:scale-105 transition-transform" />
                 <span className="self-center text-xl font-bold whitespace-nowrap text-slate-800 tracking-tight">
                   Wiki<span className="text-amber-600">NITT</span>
                 </span>
@@ -289,7 +289,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                   </>
                 ) : (
                   // Placeholder for main nav
-                   <div className="w-[80px] h-[36px]" />
+                  <div className="w-[80px] h-[36px]" />
                 )}
               </div>
             </div>

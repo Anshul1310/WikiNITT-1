@@ -9,17 +9,15 @@ export default function LandingNavbar() {
 
     return (
         <header className="flex justify-between items-center px-5 py-5 max-w-[1400px] mx-auto animate-[fadeInUp_0.6s_ease-out] font-[Manrope,sans-serif]">
-            
-            {/* LEFT: Logo */}
+
             <div className="text-[1.4rem] font-bold tracking-tight text-[#222]">
                 WikiNITT
             </div>
 
-            {/* CENTER: Navigation Links */}
             <nav className="hidden md:block">
                 <ul className="flex gap-10 list-none m-0 p-0">
                     <li>
-                        <Link href="/" className="text-[#000] text-[0.95rem] font-medium transition-colors hover:text-[#3b28cc]">
+                        <Link href="/" className="text-black text-[0.95rem] font-medium transition-colors hover:text-[#3b28cc]">
                             Homepage
                         </Link>
                     </li>
@@ -36,10 +34,9 @@ export default function LandingNavbar() {
                 </ul>
             </nav>
 
-            {/* RIGHT: Auth & Actions */}
             <div className="flex items-center gap-[25px]">
                 <MapPin className="w-5 h-5 text-[#666] hidden md:block" />
-                
+
                 {status === "unauthenticated" && (
                     <button
                         onClick={() => signIn("dauth")}
