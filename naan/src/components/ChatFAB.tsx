@@ -11,6 +11,7 @@ export default function ChatFAB() {
 
   // Hide on chat page
   const isChatPage = pathname === "/chat";
+  const isArticlePage = pathname?.startsWith("/articles");
 
   useEffect(() => {
     // Delay visibility slightly to allow hydration and play animation smoothly
