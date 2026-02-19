@@ -166,22 +166,11 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 <Link href="/articles" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">Articles</Link>
                 <Link href="/c" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">Community</Link>
               </div>
-<<<<<<< HEAD
               <div className="flex items-center gap-[15px]">
                 <Link href="/map">
                   <MapPin className="h-4 w-4 text-white" />
                 </Link>
                 {mounted && (
-=======
-
-              <div className="flex items-center gap-[15px] text-[0.8rem]">
-                <Link href="/map">
-                  <MapPin className="h-4 w-4 text-white" />
-                </Link>
-
-                {/* Mounted check applied here */}
-                {mounted ? (
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                   <>
                     {status === "unauthenticated" ? (
                       <button onClick={() => signIn("dauth")} className="bg-white px-[16px] py-[6px] text-[0.75rem] font-semibold text-[#2d2d2d] rounded-sm">Login</button>

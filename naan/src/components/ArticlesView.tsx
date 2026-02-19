@@ -90,7 +90,6 @@ export default function ArticlesView({
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerWidth(entry.contentRect.width);
-        // Also update offset in case layout shifts
         setListOffset(parentRef.current?.offsetTop ?? 0);
       }
     });
@@ -115,7 +114,6 @@ export default function ArticlesView({
   ]);
 
   return (
-<<<<<<< HEAD
     <div className="space-y-10 font-[Manrope,sans-serif]">
       <div className="text-center space-y-4">
         <p className="text-[0.65rem] font-extrabold tracking-[2px] uppercase text-[#3b28cc]">
@@ -123,16 +121,6 @@ export default function ArticlesView({
         </p>
         <h2 className="text-4xl md:text-5xl font-[Playfair_Display] font-semibold text-[#111] tracking-tight">
           Explore <span className="italic text-[#3b28cc]">Articles</span>
-=======
-    <div className="space-y-10">
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/50 backdrop-blur-sm px-4 py-1 text-xs font-bold text-indigo-600 shadow-sm mb-2">
-          <Sparkles className="w-3.5 h-3.5" />
-          Discover Knowledge
-        </div>
-        <h2 className="text-4xl md:text-5xl font-serif font-black text-slate-900 tracking-tight">
-          Explore <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 to-blue-600">Articles</span>
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
         </h2>
         <p className="max-w-2xl mx-auto text-base text-[#777] font-light leading-relaxed">
           Curated stories, academic resources, and campus guides written by the community.
@@ -185,21 +173,13 @@ export default function ArticlesView({
               className="flex gap-6 lg:gap-8 px-2 pb-6"
             >
               {rowArticles.map((article) => (
-<<<<<<< HEAD
                 <Link
                   href={`/articles/${article.slug}`}
-=======
-                <article
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                   key={article.id}
                   style={{
                     width: `calc((100% - ${(numColumns - 1) * 32}px) / ${numColumns})`,
                   }}
-<<<<<<< HEAD
                   className="group flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
-=======
-                  className="group flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                 >
                   <div className="relative h-56 w-full overflow-hidden">
                     <Image
@@ -211,50 +191,27 @@ export default function ArticlesView({
                     <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent opacity-60" />
 
                     <div className="absolute top-4 left-4">
-<<<<<<< HEAD
                       <span className="inline-block px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-white/95 backdrop-blur-md text-[#3b28cc] rounded-lg shadow-sm">
-=======
-                      <span className="inline-block px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-white/95 backdrop-blur-md text-indigo-700 rounded-lg shadow-sm">
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                         {article.category}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col">
-<<<<<<< HEAD
                     <div className="flex items-center gap-3 text-xs font-medium text-[#888] mb-3">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-[#3b28cc]" />
-=======
-                    <div className="flex items-center gap-3 text-xs font-medium text-slate-500 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-indigo-400" />
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                         <FormattedDate date={article.createdAt} />
                       </div>
                       <span className="w-1 h-1 rounded-full bg-slate-300" />
                       <span>5 min read</span>
                     </div>
 
-<<<<<<< HEAD
                     <h3 className="text-xl font-bold text-[#111] leading-tight line-clamp-2 font-[Playfair_Display] mb-3 group-hover:text-[#3b28cc] transition-colors duration-200">
                       {article.title}
                     </h3>
 
                     <p className="text-sm text-[#777] line-clamp-2 leading-relaxed mb-6 font-light">
-=======
-                    <Link
-                      href={`/articles/${article.slug}`}
-                      className="block mb-3 group-hover:text-indigo-600 transition-colors duration-200"
-                    >
-                      <h3 className="text-xl font-bold text-slate-900 leading-tight line-clamp-2 font-serif">
-                        {article.title}
-                      </h3>
-                    </Link>
-
-                    <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed mb-6 font-light">
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                       {article.description}
                     </p>
 
@@ -269,17 +226,12 @@ export default function ArticlesView({
                               className="object-cover"
                             />
                           ) : (
-<<<<<<< HEAD
                             <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-[#3b28cc]">
-=======
-                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                               <User className="w-4 h-4" />
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col">
-<<<<<<< HEAD
                           <span className="text-xs font-bold text-[#222]">
                             {article.author?.name || "Unknown"}
                           </span>
@@ -288,30 +240,16 @@ export default function ArticlesView({
                       </div>
 
                       <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#3b28cc] group-hover:text-white transition-all duration-300">
-=======
-                          <span className="text-xs font-bold text-slate-800">
-                            {article.author?.name || "Unknown"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">Author</span>
-                        </div>
-                      </div>
-
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
                   </div>
-<<<<<<< HEAD
                 </Link>
-=======
-                </article>
->>>>>>> c335a1ceccf5db0751ac1158053f1255162dc8bf
               ))}
 
               {isFetchingNextPage && virtualRow.index === rowCount - 1 && (
                 <div className="absolute bottom-0 w-full flex justify-center items-center py-4">
-                  <span className="text-sm text-indigo-500 font-medium animate-pulse">Loading more stories...</span>
+                  <span className="text-sm text-[#3b28cc] font-medium animate-pulse">Loading more stories...</span>
                 </div>
               )}
             </div>
