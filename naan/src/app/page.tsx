@@ -271,6 +271,9 @@ export default function Home() {
           letter-spacing: 2px;
           color: #3b28cc;
           margin-bottom: 30px;
+          background: white;
+          padding: 14px 36px;
+          border-radius: 999px;
         }
 
         .hero-title {
