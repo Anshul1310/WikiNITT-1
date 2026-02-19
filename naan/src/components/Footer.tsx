@@ -14,9 +14,8 @@ export default function Footer() {
   const pathname = usePathname();
   const isArticleDetail = pathname?.startsWith("/articles/") && pathname !== "/articles";
   const isLanding = pathname === "/";
-  const isArticlesListing = pathname === "/articles";
 
-  if (isArticleDetail || isLanding || isArticlesListing) {
+  if (isArticleDetail || isLanding) {
     return (
       <footer className="w-full mt-[60px] bg-[#f3f3ff] border-t border-[#ddd] px-[5%] md:px-[8%] py-[25px] flex flex-col md:flex-row justify-between items-center text-[0.75rem] text-[#777] gap-[20px] md:gap-0 font-[Inter,sans-serif]">
         
