@@ -32,13 +32,13 @@ export default function FeaturedCarousel({
   }
 
   return (
-    <div className="relative w-full h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl mb-12 group">
+    <div className="relative w-full h-[400px] md:h-[500px] rounded-3xl overflow-hidden shadow-2xl mb-12 group font-[Manrope,sans-serif]">
       {articles.map((article, index) => (
-        <div
+        <Link
+          href={`/articles/${article.slug}`}
           key={article.id}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-            index === currentIndex ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out cursor-pointer ${index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+            }`}
         >
           <Image
             src={article.thumbnail || "/images/placeholder.png"}
@@ -49,16 +49,14 @@ export default function FeaturedCarousel({
           />
           <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
           <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full md:w-2/3 text-white">
-            <span className="inline-block px-3 py-1 mb-4 text-xs font-semibold tracking-wider uppercase bg-indigo-600 rounded-full">
+            <span className="inline-block px-3 py-1 mb-4 text-xs font-semibold tracking-wider uppercase bg-[#3b28cc] rounded-full">
               {article.category}
             </span>
-            <h2 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 leading-tight font-[Playfair_Display]">
               {article.title}
             </h2>
-            {}
-            <Link
-              href={`/articles/${article.slug}`}
-              className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+            <span
+              className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-[#3b28cc] rounded-lg hover:bg-[#2e20a8] transition-colors duration-200"
             >
               Read Article
               <svg
@@ -75,22 +73,21 @@ export default function FeaturedCarousel({
                   d="M14 5l7 7m0 0l-7 7m7-7H3"
                 ></path>
               </svg>
-            </Link>
+            </span>
           </div>
-        </div>
+        </Link>
       ))}
 
-      {}
+      { }
       <div className="absolute bottom-8 right-8 flex space-x-2 z-10">
         {articles.map((_, index) => (
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              index === currentIndex
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentIndex
                 ? "bg-white w-8"
                 : "bg-white/50 hover:bg-white/80"
-            }`}
+              }`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}

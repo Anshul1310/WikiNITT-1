@@ -115,16 +115,15 @@ export default function ArticlesView({
   ]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 font-[Manrope,sans-serif]">
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/50 backdrop-blur-sm px-4 py-1 text-xs font-bold text-indigo-600 shadow-sm mb-2">
-          <Sparkles className="w-3.5 h-3.5" />
+        <p className="text-[0.65rem] font-extrabold tracking-[2px] uppercase text-[#3b28cc]">
           Discover Knowledge
-        </div>
-        <h2 className="text-4xl md:text-5xl font-serif font-black text-slate-900 tracking-tight">
-          Explore <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 to-blue-600">Articles</span>
+        </p>
+        <h2 className="text-4xl md:text-5xl font-[Playfair_Display] font-semibold text-[#111] tracking-tight">
+          Explore <span className="italic text-[#3b28cc]">Articles</span>
         </h2>
-        <p className="max-w-2xl mx-auto text-lg text-slate-500 font-light leading-relaxed">
+        <p className="max-w-2xl mx-auto text-base text-[#777] font-light leading-relaxed">
           Curated stories, academic resources, and campus guides written by the community.
         </p>
       </div>
@@ -135,10 +134,10 @@ export default function ArticlesView({
             key={category}
             onClick={() => setSelectedCategory(category)}
             className={twMerge(
-              "px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border backdrop-blur-md active:scale-95",
+              "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 active:scale-95",
               selectedCategory === category
-                ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-200"
-                : "bg-white/40 text-slate-600 border-white/60 hover:bg-white/80 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-sm"
+                ? "bg-[#3b28cc] text-white shadow-lg shadow-[#3b28cc]/20"
+                : "bg-[#F3F1E6] text-[#555] hover:bg-[#e8e6da]"
             )}
           >
             {category}
@@ -175,12 +174,13 @@ export default function ArticlesView({
               className="flex gap-6 lg:gap-8 px-2 pb-6"
             >
               {rowArticles.map((article) => (
-                <article
+                <Link
+                  href={`/articles/${article.slug}`}
                   key={article.id}
                   style={{
                     width: `calc((100% - ${(numColumns - 1) * 32}px) / ${numColumns})`,
                   }}
-                  className="group flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+                  className="group flex flex-col h-full bg-white/70 backdrop-blur-xl rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer"
                 >
                   <div className="relative h-56 w-full overflow-hidden">
                     <Image
@@ -192,32 +192,27 @@ export default function ArticlesView({
                     <div className="absolute inset-0 bg-linear-to-t from-slate-900/60 to-transparent opacity-60" />
 
                     <div className="absolute top-4 left-4">
-                      <span className="inline-block px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-white/95 backdrop-blur-md text-indigo-700 rounded-lg shadow-sm">
+                      <span className="inline-block px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-white/95 backdrop-blur-md text-[#3b28cc] rounded-lg shadow-sm">
                         {article.category}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex items-center gap-3 text-xs font-medium text-slate-500 mb-3">
+                    <div className="flex items-center gap-3 text-xs font-medium text-[#888] mb-3">
                       <div className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                        <Clock className="w-3.5 h-3.5 text-[#3b28cc]" />
                         <FormattedDate date={article.createdAt} />
                       </div>
                       <span className="w-1 h-1 rounded-full bg-slate-300" />
                       <span>5 min read</span>
                     </div>
 
-                    <Link
-                      href={`/articles/${article.slug}`}
-                      className="block mb-3 group-hover:text-indigo-600 transition-colors duration-200"
-                    >
-                      <h3 className="text-xl font-bold text-slate-900 leading-tight line-clamp-2 font-serif">
-                        {article.title}
-                      </h3>
-                    </Link>
+                    <h3 className="text-xl font-bold text-[#111] leading-tight line-clamp-2 font-[Playfair_Display] mb-3 group-hover:text-[#3b28cc] transition-colors duration-200">
+                      {article.title}
+                    </h3>
 
-                    <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed mb-6 font-light">
+                    <p className="text-sm text-[#777] line-clamp-2 leading-relaxed mb-6 font-light">
                       {article.description}
                     </p>
 
@@ -232,25 +227,25 @@ export default function ArticlesView({
                               className="object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-[#3b28cc]">
                               <User className="w-4 h-4" />
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800">
+                          <span className="text-xs font-bold text-[#222]">
                             {article.author?.name || "Unknown"}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-medium">Author</span>
+                          <span className="text-[10px] text-[#999] font-medium">Author</span>
                         </div>
                       </div>
 
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#3b28cc] group-hover:text-white transition-all duration-300">
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
 
               {isFetchingNextPage && virtualRow.index === rowCount - 1 && (

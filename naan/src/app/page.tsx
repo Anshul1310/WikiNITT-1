@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LandingSearch } from "@/components/LandingSearch";
-import { Calendar, MessageCircle, User } from "lucide-react";
+import { Calendar, MessageCircle, Search, User } from "lucide-react";
 import LandingNavbar from "@/components/LandingNavbar";
+import { SearchModal } from "@/components/SearchModal";
 import { useQuery } from "@tanstack/react-query";
 import { request } from "graphql-request";
 import { GET_ARTICLES } from "@/gql/queries";
@@ -12,12 +12,12 @@ import Link from "next/link";
 
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [heroSearchOpen, setHeroSearchOpen] = useState(false);
 
   const { data: categorySeed } = useQuery({
     queryKey: ["landing-categories"],
     queryFn: async () => {
-      const endpoint =
-        process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+      const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
       const data = await request<Query>(endpoint, GET_ARTICLES, {
         limit: 100,
         offset: 0,
@@ -30,8 +30,7 @@ export default function Home() {
   const { data: articlesData, isLoading } = useQuery({
     queryKey: ["landing-articles", selectedCategory],
     queryFn: async () => {
-      const endpoint =
-        process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
+      const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_API_URL || "http://localhost:8080/query";
       const data = await request<Query>(endpoint, GET_ARTICLES, {
         limit: 12,
         offset: 0,
@@ -57,7 +56,7 @@ export default function Home() {
 
   const { featuredArticle, listArticles } = useMemo(() => {
     if (!articlesData || articlesData.length === 0) {
-      return { featuredArticle: null as Article | null, listArticles: [] as Article[] };
+      return { featuredArticle: null, listArticles: [] };
     }
     const subset = articlesData.slice(0, 4);
     const [first, ...rest] = subset;
@@ -65,90 +64,100 @@ export default function Home() {
   }, [articlesData]);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden font-[Manrope,sans-serif] bg-[#fdfcff] text-[#1a1a1a]">
-      
-      {/* Background Ambient Blobs */}
-      <div className="ambient-blob top-blob"></div>
-      <div className="ambient-blob bottom-blob"></div>
+    <div className="relative min-h-screen font-[Manrope,sans-serif] text-[#1a1a1a] overflow-x-hidden" style={{ background: "rgba(237, 236, 255, 1)" }}>
 
-      <LandingNavbar />
+      <div className="relative z-10">
+        <LandingNavbar />
 
-      <main className="w-full max-w-[1200px] mx-auto px-5 pb-[60px] flex flex-col gap-[60px]">
-        
-        {/* --- Hero Section (The Glass Box) --- */}
-        <section className="hero-box">
-          <span className="tag-pill animate-up delay-1">Digital Campus Hub</span>
-          <h1 className="hero-title animate-up delay-2">
-            Explore the <span>Pulse</span> of<br />NITT
-          </h1>
-          
-          <div className="search-wrapper animate-up delay-3 w-full max-w-[500px]">
-            {/* Keeping your functional Search Component */}
-            <LandingSearch />
+        {/* --- Hero Section: Full-width gradient container --- */}
+        <section className="hero-section-outer relative z-10 w-full mt-2 mb-10">
+          {/* Radial gradient blobs — full-width, localized to hero */}
+          <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)" }}>
+            <div className="absolute top-[-30%] left-[-5%] w-[60%] h-[90%] rounded-full bg-[#C7D2FE] blur-[100px] opacity-90" />
+            <div className="absolute top-[0%] right-[-5%] w-[55%] h-[90%] rounded-full bg-[#FBCFE8] blur-[100px] opacity-80" />
+            <div className="absolute bottom-[-20%] left-[25%] w-[50%] h-[60%] rounded-full bg-[#DDD6FE] blur-[90px] opacity-75" />
           </div>
-        </section>
 
-        {/* --- Categories --- */}
-        <section className="flex justify-center gap-3 flex-wrap">
-          {categoryOptions.map((label) => (
-            <button
-              key={label}
-              className={`cat-btn ${(!selectedCategory && label === "All") || selectedCategory === label ? "active" : ""}`}
-              onClick={() =>
-                setSelectedCategory(label === "All" ? undefined : label)
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </section>
-
-        {/* --- Featured Article --- */}
-        <section className="flex justify-center mt-5">
-          <div className="featured-card group">
-            <span className="floating-tag">Featured</span>
-            {featuredArticle ? (
-              <Link href={featuredArticle.slug ? `/articles/${featuredArticle.slug}` : "#"} className="block h-full w-full">
-                <img
-                  src={
-                    featuredArticle.thumbnail ||
-                    "https://images.unsplash.com/photo-1516410303867-c04373208022?auto=format&fit=crop&w=800&q=80"
-                  }
-                  alt={featuredArticle.title}
+          {/* Glass card centered */}
+          <div className="relative z-10 flex justify-center py-16 px-5">
+            <div className="hero-glass-card">
+              <p className="tag-pill">DIGITAL CAMPUS HUB</p>
+              <h1 className="hero-title">
+                Explore the <span>Pulse</span> of<br />NITT
+              </h1>
+              <div className="hero-search-wrapper" onClick={() => setHeroSearchOpen(true)}>
+                <Search className="h-5 w-5 text-[#888] shrink-0 ml-4" />
+                <input
+                  type="text"
+                  placeholder="Search articles on anything..."
+                  className="flex-1 bg-transparent text-[0.95rem] outline-none placeholder:text-[#999] h-full px-4 cursor-pointer"
+                  readOnly
                 />
-                <div className="featured-content">
-                  <h2>{featuredArticle.title}</h2>
-                  <p>{featuredArticle.description || "Tap to read the full story."}</p>
-                  <div className="meta-tags">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />{" "}
-                      {new Intl.DateTimeFormat("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      }).format(new Date(featuredArticle.createdAt))}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" />{" "}
-                      {featuredArticle.author?.name || "WikiNITT"}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <MessageCircle className="w-3.5 h-3.5" /> Read
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ) : (
-              <div className="featured-fallback">Loading featured story...</div>
-            )}
+                <button
+                  className="m-1 rounded-full px-8 py-3 bg-[#3b28cc] text-white text-[0.9rem] font-medium hover:bg-[#2e20a8] transition-all shadow-md"
+                  onClick={(e) => { e.stopPropagation(); setHeroSearchOpen(true); }}
+                >
+                  Search
+                </button>
+              </div>
+              <SearchModal isOpen={heroSearchOpen} onClose={() => setHeroSearchOpen(false)} />
+            </div>
           </div>
         </section>
 
-        {/* --- Article List --- */}
-        <section className="flex flex-col gap-10 max-w-[720px] mx-auto">
-          {isLoading && (
-            <>
-              {[1, 2, 3].map((i) => (
+        <main className="w-full max-w-[1200px] mx-auto px-5 pb-[60px] flex flex-col gap-[60px]">
+
+          {/* --- TOP: Updated Categories --- */}
+          <section className="flex justify-center gap-3 flex-wrap">
+            {categoryOptions.map((label) => (
+              <button
+                key={label}
+                className={`cat-btn ${(!selectedCategory && label === "All") || selectedCategory === label ? "active" : ""}`}
+                onClick={() => setSelectedCategory(label === "All" ? undefined : label)}
+              >
+                {label}
+              </button>
+            ))}
+          </section>
+
+          {/* --- BOTTOM: Restored Featured Article (Centered) --- */}
+          <section className="flex justify-center mt-5">
+            <div className="featured-card group">
+              <span className="floating-tag">Featured</span>
+              {featuredArticle ? (
+                <Link href={featuredArticle.slug ? `/articles/${featuredArticle.slug}` : "#"} className="block h-full w-full">
+                  <img
+                    src={featuredArticle.thumbnail || "https://images.unsplash.com/photo-1516410303867-c04373208022?auto=format&fit=crop&w=800&q=80"}
+                    alt={featuredArticle.title}
+                  />
+                  <div className="featured-content">
+                    <h2>{featuredArticle.title}</h2>
+                    <p>{featuredArticle.description || "Tap to read the full story."}</p>
+                    <div className="meta-tags">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />{" "}
+                        {new Date(featuredArticle.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5" />{" "}
+                        {featuredArticle.author?.displayName || featuredArticle.author?.name || "WikiNITT"}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5" /> Read
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ) : (
+                <div className="featured-fallback">Loading featured story...</div>
+              )}
+            </div>
+          </section>
+
+          {/* --- BOTTOM: Restored Article List (Vertical) --- */}
+          <section className="flex flex-col gap-10 max-w-[720px] mx-auto">
+            {isLoading && (
+              [1, 2, 3].map((i) => (
                 <div key={i} className="article-skeleton">
                   <div className="img" />
                   <div className="text">
@@ -157,174 +166,137 @@ export default function Home() {
                     <div className="line w-52" />
                   </div>
                 </div>
-              ))}
-            </>
-          )}
+              ))
+            )}
 
-          {!isLoading && listArticles.length === 0 && (
-            <div className="text-center text-sm text-[#777]">
-              No articles yet. Check back soon.
-            </div>
-          )}
+            {!isLoading && listArticles.length === 0 && (
+              <div className="text-center text-sm text-[#777]">No articles yet. Check back soon.</div>
+            )}
 
-          {listArticles.map((article) => (
-            <Link
-              href={article.slug ? `/articles/${article.slug}` : "#"}
-              className="article-item"
-              key={article.id}
-            >
-              <img
-                src={
-                  article.thumbnail ||
-                  "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=600&q=80"
-                }
-                alt={article.title}
-              />
-              <div className="article-text">
-                <div className="date-line">
-                  <span>{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(article.createdAt))}</span>
-                  <span className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" /> {article.author?.name || "WikiNITT"}
-                  </span>
+            {listArticles.map((article) => (
+              <Link
+                href={article.slug ? `/articles/${article.slug}` : "#"}
+                className="article-item"
+                key={article.id}
+              >
+                <img
+                  src={article.thumbnail || "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=600&q=80"}
+                  alt={article.title}
+                />
+                <div className="article-text">
+                  <div className="date-line">
+                    <span>{new Date(article.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    <span className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5" /> {article.author?.displayName || article.author?.name || "WikiNITT"}
+                    </span>
+                  </div>
+                  <h3>{article.title}</h3>
+                  <p>{article.description || "Tap to read the full story."}</p>
                 </div>
-                <h3>{article.title}</h3>
-                <p>{article.description || "Tap to read the full story."}</p>
-              </div>
-            </Link>
-          ))}
-        </section>
+              </Link>
+            ))}
+          </section>
 
-      </main>
+        </main>
+
+
+      </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
 
-        :root {
-          --primary-blue: #3b28cc;
-        }
+        /* Hero Section */
 
-        /* Ambient Blobs */
-        .ambient-blob {
-          position: absolute;
-          width: 60vw;
-          height: 60vh;
-          z-index: -1;
-        }
-        .top-blob {
-          top: -10%;
-          left: -10%;
-          background: radial-gradient(circle, rgba(169, 196, 255, 0.4) 0%, rgba(255,255,255,0) 70%);
-        }
-        .bottom-blob {
-          top: 10%;
-          right: -10%;
-          background: radial-gradient(circle, rgba(245, 200, 255, 0.4) 0%, rgba(255,255,255,0) 70%);
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-up {
-          animation: none;
-          opacity: 1;
-        }
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.3s; }
-        .delay-3 { animation-delay: 0.5s; }
-
-        /* Hero Box */
-        .hero-box {
+        .hero-glass-card {
+          position: relative;
+          z-index: 1;
           width: 100%;
-          height: calc(100vh - 120px); 
-          min-height: 600px;
-          padding: 0 20px;
-          margin-top: 10px;
-          background: linear-gradient(125deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 245, 255, 0.4) 50%, rgba(255, 240, 250, 0.3) 100%);
-          backdrop-filter: blur(30px) saturate(120%);
-          -webkit-backdrop-filter: blur(30px) saturate(120%);
-          border: 1px solid rgba(255, 255, 255, 0.8);
+          max-width: 900px;
           border-radius: 40px;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05), inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 0 40px rgba(255, 255, 255, 0.8);
+          background: rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(30px);
+          -webkit-backdrop-filter: blur(30px);
+          border: none;
+          padding: 80px 40px;
+          text-align: center;
+          box-shadow: 0 8px 80px 0 rgba(100, 80, 200, 0.12), 0 0 0 1px rgba(255,255,255,0.25), inset 0 1px 0 rgba(255,255,255,0.5);
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
         }
 
         .tag-pill {
           display: inline-block;
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(10px);
-          color: var(--primary-blue);
-          padding: 8px 16px;
-          border-radius: 12px;
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           font-weight: 800;
           text-transform: uppercase;
-          letter-spacing: 1.5px;
+          letter-spacing: 2px;
+          color: #3b28cc;
           margin-bottom: 30px;
-          box-shadow: 0 5px 15px rgba(59, 40, 204, 0.1);
         }
 
         .hero-title {
           font-family: 'Playfair Display', serif;
           font-size: 4.5rem;
+          font-weight: 600;
           line-height: 1.1;
-          margin-bottom: 40px;
-          color: #050505;
-          letter-spacing: -1px;
-          text-shadow: 0 2px 10px rgba(255,255,255,0.8);
+          margin-bottom: 50px;
+          color: #111;
+          letter-spacing: -1.5px;
         }
         .hero-title span {
           font-style: italic;
-          color: var(--primary-blue);
+          color: #3b28cc;
           font-weight: 600;
         }
 
-        /* Categories */
+        .hero-search-wrapper {
+          width: 100%;
+          max-width: 520px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          background: #ffffff;
+          border-radius: 9999px;
+          box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hero-search-wrapper:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 15px 50px -10px rgba(0,0,0,0.12);
+        }
+
+        /* Category Buttons */
         .cat-btn {
-          padding: 10px 24px;
+          padding: 10px 28px;
           border-radius: 30px;
-          font-size: 0.9rem;
-          cursor: pointer;
+          font-size: 0.85rem;
           font-weight: 600;
-          font-family: 'Playfair Display', serif;
-          letter-spacing: 0.5px;
-          transition: background-color 0.3s, color 0.3s;
+          transition: all 0.2s;
+          background: #F3F1E6; /* Beige for inactive */
+          color: #555;
+          margin-bottom: 10px;
         }
-        .cat-btn:not(.active) {
-          background-color: rgba(255,255,255,0.5);
-          border: 1px solid rgba(0,0,0,0.05);
-          color: #666;
+        .cat-btn:hover {
+          background: #e8e6da;
         }
-        .cat-btn:hover { background: white; }
         .cat-btn.active {
-          background-color: var(--primary-blue);
+          background: #3b28cc; /* Blue for active */
           color: white;
-          box-shadow: 0 5px 15px rgba(59, 40, 204, 0.2);
+          box-shadow: 0 4px 15px rgba(59, 40, 204, 0.25);
         }
 
-        /* Featured Card */
+        /* Featured Card (Bottom Section) */
         .featured-card {
           position: relative;
           width: 100%;
           max-width: 600px;
-          height: 750px;
+          aspect-ratio: 1 / 1;
           border-radius: 30px;
           overflow: hidden;
           box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
-        .featured-card img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
+        .featured-card img { width: 100%; height: 100%; object-fit: cover; }
         .featured-content {
           position: absolute;
           bottom: 0;
@@ -334,27 +306,9 @@ export default function Home() {
           background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
           color: white;
         }
-        .featured-content h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 2.2rem;
-          font-weight: 500;
-          margin-bottom: 15px;
-          line-height: 1.2;
-        }
-        .featured-content p {
-          font-size: 0.95rem;
-          opacity: 0.9;
-          margin-bottom: 20px;
-          font-weight: 300;
-        }
-        .meta-tags {
-          display: flex;
-          gap: 20px;
-          font-size: 0.8rem;
-          opacity: 0.8;
-          font-weight: 500;
-          letter-spacing: 0.5px;
-        }
+        .featured-content h2 { font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 500; margin-bottom: 15px; }
+        .featured-content p { font-size: 0.95rem; opacity: 0.9; margin-bottom: 20px; font-weight: 300; }
+        .meta-tags { display: flex; gap: 20px; font-size: 0.8rem; opacity: 0.8; font-weight: 500; }
         .floating-tag {
           position: absolute;
           top: 30px;
@@ -368,100 +322,25 @@ export default function Home() {
           text-transform: uppercase;
           z-index: 2;
         }
-        .featured-fallback {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 100%;
-          background: #f6f6fb;
-          color: #777;
-          font-weight: 600;
-        }
 
-        /* Article List */
-        .article-item {
-          display: flex;
-          gap: 30px;
-          align-items: flex-start;
-          text-decoration: none;
-          color: inherit;
-          transition: transform 0.25s ease;
-        }
-        .article-item:hover h3 {
-          color: var(--primary-blue);
-        }
+        /* Article List (Bottom Section) */
+        .article-item { display: flex; gap: 30px; align-items: flex-start; color: inherit; transition: transform 0.25s ease; }
         .article-item:hover { transform: translateX(6px); }
-        .article-item img {
-          width: 150px;
-          height: 150px;
-          object-fit: cover;
-          border-radius: 8px;
-        }
+        .article-item:hover h3 { color: #3b28cc; }
+        .article-item img { width: 150px; height: 150px; object-fit: cover; border-radius: 0; }
         .article-text { flex: 1; padding-top: 5px; }
-        .date-line {
-          font-size: 0.75rem;
-          color: #888;
-          margin-bottom: 10px;
-          display: flex;
-          gap: 15px;
-          align-items: center;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .article-text h3 {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.8rem;
-          font-weight: 400;
-          color: #222;
-          margin-bottom: 12px;
-          line-height: 1.1;
-        }
-        .article-text p {
-          font-size: 0.9rem;
-          color: #666;
-          line-height: 1.6;
-          font-weight: 400;
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .article-skeleton {
-          display: flex;
-          gap: 30px;
-          align-items: center;
-        }
-        .article-skeleton .img {
-          width: 150px;
-          height: 150px;
-          border-radius: 8px;
-          background: linear-gradient(90deg, #f1f1f5 0%, #e6e6ef 50%, #f1f1f5 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.2s infinite;
-        }
-        .article-skeleton .text {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .article-skeleton .line {
-          height: 12px;
-          border-radius: 6px;
-          background: linear-gradient(90deg, #f1f1f5 0%, #e6e6ef 50%, #f1f1f5 100%);
-          background-size: 200% 100%;
-          animation: shimmer 1.2s infinite;
-        }
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
+        .date-line { font-size: 0.75rem; color: #888; margin-bottom: 10px; display: flex; gap: 15px; align-items: center; font-weight: 600; text-transform: uppercase; }
+        .article-text h3 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: #222; margin-bottom: 12px; line-height: 1.1; transition: color 0.2s; }
+        .article-text p { font-size: 0.9rem; color: #666; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .article-skeleton { display: flex; gap: 30px; align-items: center; }
+        .article-skeleton .img { width: 150px; height: 150px; border-radius: 0; background: #f1f1f5; animation: shimmer 1.2s infinite; }
+        .article-skeleton .line { height: 12px; border-radius: 6px; background: #f1f1f5; margin-bottom: 10px; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
         @media (max-width: 768px) {
-          .hero-title { font-size: 2.5rem; }
-          .hero-box { height: auto; min-height: 450px; padding: 60px 20px; }
+          .hero-title { font-size: 2rem; }
+          .hero-glass-card { padding: 40px 24px; }
           .article-item { flex-direction: column; gap: 15px; }
           .article-item img { width: 100%; height: 250px; }
           .featured-card { height: 500px; }
