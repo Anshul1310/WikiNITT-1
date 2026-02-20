@@ -21,16 +21,6 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center gap-[10px] md:gap-[20px]">
             <div>© 2026 NITT. All rights reserved.</div>
             <div className="flex gap-[15px] text-[1rem] items-center">
-              <Link href="https://www.nitt.edu" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                <Image
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=WikiNITT"
-                  alt="WikiNITT"
-                  width={20}
-                  height={20}
-                  className="rounded-full"
-                  unoptimized
-                />
-              </Link>
               <Link href="https://www.linkedin.com/school/naboratorynit/" target="_blank" rel="noopener noreferrer" className="hover:text-[#2d2d2d] transition-colors"><Linkedin className="w-4 h-4" /></Link>
               <Link href="mailto:contact@nitt.edu" className="hover:text-[#2d2d2d] transition-colors"><Mail className="w-4 h-4" /></Link>
             </div>
