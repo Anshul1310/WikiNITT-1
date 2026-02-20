@@ -42,7 +42,7 @@ export default function AdminSidebar() {
     <aside className="flex h-screen w-64 flex-col bg-white border-r border-gray-200 transition-all duration-300">
       <div className="flex items-center justify-center border-b border-gray-200 p-6">
         <Link href="/admin/users" className="flex items-center group">
-          <LogoIcon className="h-8 w-8 mr-2 fill-white bg-blue-900 rounded-md p-1.5 group-hover:bg-blue-800 transition-colors" />
+          <img src="/logo.png" alt="WikiNITT" className="h-8 w-8 mr-2" />
           <span className="self-center text-xl font-bold whitespace-nowrap text-blue-900">
             Wiki
           </span>
@@ -63,14 +63,14 @@ export default function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={`group flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-900 hover:bg-gray-100"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-900 hover:bg-gray-100"
                 }`}
             >
               <item.icon
                 className={`mr-3 h-5 w-5 transition-colors ${isActive
-                    ? "text-blue-600"
-                    : "text-gray-500 group-hover:text-gray-900"
+                  ? "text-blue-600"
+                  : "text-gray-500 group-hover:text-gray-900"
                   }`}
               />
               <span className="flex-1">{item.name}</span>

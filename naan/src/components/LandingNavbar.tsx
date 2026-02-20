@@ -26,6 +26,7 @@ export default function LandingNavbar() {
     const navItems = [
         { label: "Home", href: "/" },
         { label: "Articles", href: "/articles" },
+        { label: "Map", href: "/map" },
         { label: "About Us", href: "#footer" },
     ];
 
@@ -46,8 +47,8 @@ export default function LandingNavbar() {
             <div className="flex justify-between items-center px-8 py-3 max-w-[1400px] mx-auto relative">
                 {/* Logo - Minimalist Serif 'W' */}
                 <div className="flex items-center gap-2 z-10 w-[140px]">
-                    <Link href="/" className="font-[Playfair_Display] text-4xl font-normal text-black tracking-tight hover:opacity-80 transition-opacity">
-                        W
+                    <Link href="/" className="hover:opacity-80 transition-opacity">
+                        <img src="/logo.png" alt="WikiNITT" className="h-10 w-10 object-contain" />
                     </Link>
                 </div>
 
@@ -60,7 +61,7 @@ export default function LandingNavbar() {
                                 href={item.href}
                                 onClick={(e) => handleNavClick(e, item.href)}
                                 className={cn(
-                                    "text-[0.9rem] font-medium transition-colors hover:text-[#3b28cc]",
+                                    "text-[1rem] font-medium transition-colors hover:text-[#3b28cc]",
                                     pathname === item.href || (item.href === "/" && pathname === "/")
                                         ? "text-[#1a1a1a]"
                                         : "text-[#666]"
@@ -140,9 +141,6 @@ export default function LandingNavbar() {
                             )}
                         </Link>
                     ))}
-                    <Link href="/map" onClick={closeMobile} className="flex items-center justify-between text-[0.95rem] font-semibold text-[#222] py-2">
-                        Map <span className="text-[#3b28cc] text-xs">Go</span>
-                    </Link>
                 </div>
             </div>
 

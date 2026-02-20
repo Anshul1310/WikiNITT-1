@@ -174,10 +174,6 @@ export default function Home() {
                         {new Date(featuredArticle.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" />{" "}
-                        {featuredArticle.author?.displayName || featuredArticle.author?.name || "WikiNITT"}
-                      </span>
-                      <span className="flex items-center gap-1.5">
                         <MessageCircle className="w-3.5 h-3.5" /> Read
                       </span>
                     </div>
@@ -223,9 +219,6 @@ export default function Home() {
                   <div className="article-text">
                     <div className="date-line">
                       <span>{new Date(article.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      <span className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" /> {article.author?.displayName || article.author?.name || "WikiNITT"}
-                      </span>
                     </div>
                     <h3>{article.title}</h3>
                     <p style={{ WebkitLineClamp: lineClamp }}>{getArticleExcerpt(article)}</p>
@@ -368,14 +361,14 @@ export default function Home() {
         .article-item { display: flex; gap: 30px; align-items: flex-start; color: inherit; transition: transform 0.25s ease; }
         .article-item:hover { transform: translateX(6px); }
         .article-item:hover h3 { color: #3b28cc; }
-        .article-item img { width: 195px; height: 186px; object-fit: cover; border-radius: 0; }
+        .article-item img { width: 195px; height: 186px; object-fit: cover; border-radius: 16px; }
         .article-text { flex: 1; padding-top: 5px; }
         .date-line { font-size: 0.75rem; color: #888; margin-bottom: 10px; display: flex; gap: 15px; align-items: center; font-weight: 600; text-transform: uppercase; }
         .article-text h3 { font-family: 'Kaisei Decol', serif; font-size: 24px; color: rgba(51, 51, 51, 1); margin-bottom: 12px; line-height: 1.2; transition: color 0.2s; }
         .article-text p { font-family: 'Lato', sans-serif; font-weight: 300; font-size: 0.9rem; color: #666; line-height: 1.6; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
 
         .article-skeleton { display: flex; gap: 30px; align-items: center; }
-        .article-skeleton .img { width: 150px; height: 150px; border-radius: 0; background: #f1f1f5; animation: shimmer 1.2s infinite; }
+        .article-skeleton .img { width: 150px; height: 150px; border-radius: 16px; background: #f1f1f5; animation: shimmer 1.2s infinite; }
         .article-skeleton .line { height: 12px; border-radius: 6px; background: #f1f1f5; margin-bottom: 10px; animation: shimmer 1.2s infinite; }
         @keyframes shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 

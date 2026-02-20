@@ -13,9 +13,7 @@ export default function Loading() {
             {/* Content */}
             <div className="relative z-10 flex flex-col items-center gap-6">
                 {/* Logo */}
-                <span className="text-5xl font-normal text-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    W
-                </span>
+                <img src="/logo.png" alt="WikiNITT" className="h-14 w-14 object-contain" />
 
                 {/* Spinner */}
                 <div className="relative w-10 h-10">

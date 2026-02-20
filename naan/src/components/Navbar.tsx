@@ -5,7 +5,6 @@ import Link from "next/link";
 import { SearchModal } from "@/components/SearchModal";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import LogoIcon from "@/components/logo.svg";
 import {
   Home,
   BookOpen,
@@ -80,7 +79,7 @@ export function UserMenu() {
         <span className="sr-only">Open user menu</span>
         <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
           <Image
-            src={me.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(me.username)}`}
+            src={me.avatar || `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${encodeURIComponent(me.username)}`}
             alt={me.username}
             className="w-full h-full object-cover"
             width={36}
@@ -157,17 +156,18 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
           <div className="w-full px-[5%] md:px-[8%] py-[15px]">
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center group relative pb-1">
+                <div className="bg-white rounded-lg p-1 mr-2">
+                  <img src="/logo.png" alt="WikiNITT" className="h-7 w-7 object-contain" />
+                </div>
                 <span className="text-[1.2rem] font-bold tracking-[1px] text-white">WikiNITT</span>
               </Link>
               <div className="hidden items-center gap-[30px] md:flex">
-                <Link href="/" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">Homepage</Link>
-                <Link href="/articles" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">Articles</Link>
-                <Link href="/c" className="text-[0.8rem] uppercase text-[#aaa] hover:text-white transition-colors">Community</Link>
+                <Link href="/" className="text-[0.9rem] uppercase text-[#aaa] hover:text-white transition-colors">Homepage</Link>
+                <Link href="/articles" className="text-[0.9rem] uppercase text-[#aaa] hover:text-white transition-colors">Articles</Link>
+                <Link href="/map" className="text-[0.9rem] uppercase text-[#aaa] hover:text-white transition-colors">Map</Link>
+                <button onClick={() => { const footer = document.getElementById("footer"); if (footer) footer.scrollIntoView({ behavior: "smooth" }); else window.location.href = "/#footer"; }} className="text-[0.9rem] uppercase text-[#aaa] hover:text-white transition-colors cursor-pointer bg-transparent border-none">About Us</button>
               </div>
               <div className="flex items-center gap-[15px]">
-                <Link href="/map">
-                  <MapPin className="h-4 w-4 text-white" />
-                </Link>
                 {mounted && (
                   <>
                     {status === "unauthenticated" ? (
@@ -202,7 +202,7 @@ export default function Navbar({ children }: { children: React.ReactNode }) {
                 {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <Link href="/" className="flex ms-2 items-center group">
-                <LogoIcon className="h-8 w-8 mr-2 fill-white bg-indigo-600 rounded-lg p-1.5" />
+                <img src="/logo.png" alt="WikiNITT" className="h-8 w-8 mr-2" />
                 <span className="text-xl font-bold text-slate-800">Wiki<span className="text-amber-600">NITT</span></span>
               </Link>
             </div>

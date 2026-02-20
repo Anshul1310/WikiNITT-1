@@ -219,7 +219,7 @@ export default function ArticlesView({
                       <div className="flex items-center gap-3">
                         <div className="relative h-9 w-9 rounded-full overflow-hidden border border-white shadow-sm ring-1 ring-slate-100">
                           <Image
-                            src={article.author?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(article.author?.name || 'anonymous')}`}
+                            src={article.author?.avatar || `https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=${encodeURIComponent(article.author?.name || 'anonymous')}`}
                             alt={article.author?.name || "Author"}
                             fill
                             className="object-cover"

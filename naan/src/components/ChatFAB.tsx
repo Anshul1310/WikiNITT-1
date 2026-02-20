@@ -9,7 +9,6 @@ export default function ChatFAB() {
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [hasShownIntro, setHasShownIntro] = useState(false);
   const [isNearFooter, setIsNearFooter] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -27,7 +26,6 @@ export default function ChatFAB() {
       if (!footer) return;
       const footerRect = footer.getBoundingClientRect();
       const windowHeight = window.innerHeight;
-      // If footer top is within viewport (with some margin)
       setIsNearFooter(footerRect.top < windowHeight - 20);
     };
 
@@ -40,17 +38,15 @@ export default function ChatFAB() {
     };
   }, []);
 
-  // Auto-show tooltip on first load
+  // Show tooltip immediately on load, auto-hide after 2 seconds
   useEffect(() => {
-    if (isVisible && !hasShownIntro) {
-      const introTimer = setTimeout(() => {
-        setShowTooltip(true);
-        setHasShownIntro(true);
-        hideTimer.current = setTimeout(() => setShowTooltip(false), 3000);
-      }, 1500);
-      return () => clearTimeout(introTimer);
-    }
-  }, [isVisible, hasShownIntro]);
+    if (!isVisible) return;
+    setShowTooltip(true);
+    hideTimer.current = setTimeout(() => setShowTooltip(false), 2000);
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [isVisible]);
 
   const handleMouseEnter = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -58,7 +54,7 @@ export default function ChatFAB() {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    hideTimer.current = setTimeout(() => setShowTooltip(false), 1200);
+    hideTimer.current = setTimeout(() => setShowTooltip(false), 1000);
   }, []);
 
   useEffect(() => {
